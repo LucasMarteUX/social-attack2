@@ -7,7 +7,9 @@ import IdeaCard from '../components/ideias/IdeaCard'
 import IdeaForm from '../components/ideias/IdeaForm'
 import Spinner from '../components/ui/Spinner'
 import { useIdeias } from '../hooks/useIdeias'
-import { mockCategorias, type Ideia } from '../data/mock'
+import { useCategorias } from '../hooks/useCategorias'
+import { gerarIdeias } from '../lib/gemini'
+import type { Ideia } from '../data/mock'
 
 type Filtro = 'todas' | 'favoritas' | 'com_conteudo' | 'sem_conteudo'
 
@@ -22,7 +24,8 @@ export default function BibliotecaPage() {
   const { id: categoriaId } = useParams<{ id: string }>()
   const navigate = useNavigate()
 
-  const categoria = mockCategorias.find((c) => c.id === categoriaId)
+  const { categorias } = useCategorias()
+  const categoria = categorias.find((c) => c.id === categoriaId)
   const { ideias, criar, editar, excluir, toggleFavorita } = useIdeias(categoriaId!)
 
   const [filtro, setFiltro] = useState<Filtro>('todas')
@@ -59,17 +62,19 @@ export default function BibliotecaPage() {
     setEditando(null)
   }
 
-  // Simulação da geração com IA (dados mockados)
   async function handleGerarComIA() {
+    if (!categoria) return
     setGerandoIA(true)
-    await new Promise((r) => setTimeout(r, 2000))
-    const sugestoes = [
-      { titulo: `Como usar ${categoria?.nome} para crescer no Instagram`, descricao: 'Estratégias práticas e aplicáveis para qualquer perfil.' },
-      { titulo: `3 tendências de ${categoria?.nome} que você precisa conhecer`, descricao: 'O que está dominando o mercado agora e como se posicionar.' },
-      { titulo: `Erros comuns em ${categoria?.nome} e como evitá-los`, descricao: 'Aprenda com os erros mais frequentes e destaque-se.' },
-    ]
-    sugestoes.forEach((s) => criar({ titulo: s.titulo, descricao: s.descricao, referencias: [] }))
-    setGerandoIA(false)
+    try {
+      const sugestoes = await gerarIdeias(categoria.nome, categoria.descricao, '', 5)
+      await Promise.all(
+        sugestoes.map((s) => criar({ titulo: s.titulo, descricao: s.descricao, referencias: [] }))
+      )
+    } catch {
+      // silencia erro — ideias não chegaram
+    } finally {
+      setGerandoIA(false)
+    }
   }
 
   if (!categoria) {
@@ -137,7 +142,7 @@ export default function BibliotecaPage() {
       {gerandoIA && (
         <div className="flex items-center gap-3 p-4 rounded-xl bg-purple-50 border border-purple-100 mb-6">
           <Spinner size="sm" />
-          <p className="text-body-md text-purple-700 font-medium">Claude está gerando ideias para você…</p>
+          <p className="text-body-md text-purple-700 font-medium">Gemini está gerando ideias para você…</p>
         </div>
       )}
 

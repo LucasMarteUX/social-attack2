@@ -1,8 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { Trash2, Eye } from 'lucide-react'
 import Badge from '../ui/Badge'
-import { type Criativo } from '../../data/mock'
-import { mockCategorias } from '../../data/mock'
+import { type Criativo, type Categoria } from '../../data/mock'
 
 type StatusVariant = 'success' | 'warning' | 'alert' | 'neutral' | 'critical'
 
@@ -16,12 +15,12 @@ const STATUS_MAP: Record<Criativo['status'], { label: string; variant: StatusVar
 
 interface CriativoCardProps {
   criativo: Criativo
+  categoria?: Categoria
   onDelete: () => void
 }
 
-export default function CriativoCard({ criativo, onDelete }: CriativoCardProps) {
+export default function CriativoCard({ criativo, categoria, onDelete }: CriativoCardProps) {
   const navigate = useNavigate()
-  const categoria = mockCategorias.find((c) => c.id === criativo.categoria_id)
   const thumb = criativo.slides[0]?.url_imagem
   const { label, variant } = STATUS_MAP[criativo.status]
 

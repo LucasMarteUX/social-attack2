@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { ChevronRight, RotateCcw, Check, Sparkles, Instagram } from 'lucide-react'
 import BriefingForm, { type BriefingData } from '../components/criativos/BriefingForm'
@@ -7,89 +7,128 @@ import SlidePreview from '../components/criativos/SlidePreview'
 import SlideCarousel from '../components/criativos/SlideCarousel'
 import Spinner from '../components/ui/Spinner'
 import Button from '../components/ui/Button'
-import { mockIdeias, mockCategorias } from '../data/mock'
+import { useCriativos } from '../hooks/useCriativos'
+import { gerarRoteiro, type CarouselScript } from '../lib/gemini'
+import { supabase } from '../lib/supabase'
+import type { Ideia, Categoria } from '../data/mock'
 
-interface ScriptSlide {
-  numero: number
-  texto: string
-}
-
-interface Script {
-  titulo: string
-  slides: ScriptSlide[]
-  legenda: string
-  hashtags: string[]
-}
-
-async function mockGerarRoteiro(briefing: BriefingData): Promise<Script> {
-  await new Promise((r) => setTimeout(r, 2500))
-
-  const aberturas = [
-    `${briefing.tema} — o que ninguém te conta`,
-    `Tudo que você precisa saber sobre ${briefing.tema}`,
-    `Se você ainda não sabe isso sobre ${briefing.tema}, precisa ver agora`,
-  ]
-
-  const slides: ScriptSlide[] = Array.from({ length: briefing.qtdSlides }, (_, i) => {
-    if (i === 0) return { numero: 1, texto: aberturas[Math.floor(Math.random() * aberturas.length)] }
-    if (i === briefing.qtdSlides - 1) {
-      return { numero: i + 1, texto: `${briefing.cta}\n\nSalva esse post para não esquecer!` }
-    }
-    return { numero: i + 1, texto: `Ponto ${i}: [Claude geraria conteúdo específico sobre "${briefing.tema}" aqui]` }
-  })
-
-  return {
-    titulo: briefing.tema,
-    slides,
-    legenda: `${briefing.tema}.\n\nVocê já passou por isso? Conta pra mim nos comentários 👇\n\n${briefing.cta}`,
-    hashtags: ['#conteudo', '#instagram', '#marketing', '#criadores', '#dicas'],
-  }
-}
+type ScriptSlide = CarouselScript['slides'][number]
 
 const STEPS = ['Briefing', 'Roteiro', 'Revisão']
 
 export default function CriativoNovoPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const { criar, salvarComSlides, categorias } = useCriativos()
 
   const ideiaId = searchParams.get('ideia')
-  const ideia = ideiaId ? mockIdeias.find((i) => i.id === ideiaId) : null
-  const categoriaInicial = ideia ? mockCategorias.find((c) => c.id === ideia.categoria_id) : null
+  const [ideia, setIdeia] = useState<Ideia | null>(null)
+  const [categoriaInicial, setCategoriaInicial] = useState<Categoria | null>(null)
+
+  useEffect(() => {
+    if (!ideiaId) return
+    supabase
+      .from('ideias')
+      .select('*, referencias(*)')
+      .eq('id', ideiaId)
+      .single()
+      .then(({ data }) => {
+        if (!data) return
+        const mapped: Ideia = {
+          ...data,
+          referencias: (data.referencias ?? []).map((r: { tipo: string; valor: string }) => ({
+            tipo: r.tipo as 'url' | 'texto',
+            valor: r.valor,
+          })),
+        }
+        setIdeia(mapped)
+      })
+  }, [ideiaId])
+
+  useEffect(() => {
+    if (!ideia || categorias.length === 0) return
+    const cat = categorias.find((c) => c.id === ideia.categoria_id) ?? null
+    setCategoriaInicial(cat)
+  }, [ideia, categorias])
 
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [loading, setLoading] = useState(false)
+  const [erro, setErro] = useState<string | null>(null)
   const [briefing, setBriefing] = useState<BriefingData | null>(null)
-  const [script, setScript] = useState<Script | null>(null)
+  const [script, setScript] = useState<CarouselScript | null>(null)
   const [slides, setSlides] = useState<ScriptSlide[]>([])
   const [slideAtivo, setSlideAtivo] = useState(0)
 
   async function handleBriefingSubmit(data: BriefingData) {
     setBriefing(data)
+    setErro(null)
     setLoading(true)
     setStep(2)
-    const resultado = await mockGerarRoteiro(data)
-    setScript(resultado)
-    setSlides(resultado.slides)
-    setLoading(false)
-  }
-
-  function handleSlideChange(index: number, texto: string) {
-    setSlides((prev) => prev.map((s, i) => (i === index ? { ...s, texto } : s)))
-  }
-
-  function handleSalvar() {
-    navigate('/criativos')
+    try {
+      const resultado = await gerarRoteiro({
+        tema: data.tema,
+        tomNome: data.tomNome,
+        publico: data.publico,
+        cta: data.cta,
+        qtdSlides: data.qtdSlides,
+        referencias: data.referencias,
+      })
+      setScript(resultado)
+      setSlides(resultado.slides)
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao gerar roteiro')
+      setStep(1)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleRegenerar() {
     if (!briefing) return
     setStep(2)
+    setErro(null)
     setLoading(true)
-    const resultado = await mockGerarRoteiro(briefing)
-    setScript(resultado)
-    setSlides(resultado.slides)
-    setSlideAtivo(0)
-    setLoading(false)
+    try {
+      const resultado = await gerarRoteiro({
+        tema: briefing.tema,
+        tomNome: briefing.tomNome,
+        publico: briefing.publico,
+        cta: briefing.cta,
+        qtdSlides: briefing.qtdSlides,
+        referencias: briefing.referencias,
+      })
+      setScript(resultado)
+      setSlides(resultado.slides)
+      setSlideAtivo(0)
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao regenerar')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleSalvar() {
+    if (!script || !briefing) return
+    setLoading(true)
+    try {
+      const categoriaId = categoriaInicial?.id ?? categorias[0]?.id ?? ''
+      const criativo = await criar({
+        titulo: script.titulo,
+        tipo: 'carrossel',
+        categoria_id: categoriaId,
+        ideia_id: ideiaId ?? undefined,
+        tom_de_voz_id: briefing.tomId || undefined,
+      })
+      await salvarComSlides(
+        criativo.id,
+        { legenda: script.legenda, hashtags: script.hashtags, status: 'rascunho' },
+        slides
+      )
+      navigate('/criativos')
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao salvar')
+      setLoading(false)
+    }
   }
 
   const corCategoria = categoriaInicial?.cor ?? '#6D28D9'
@@ -97,7 +136,6 @@ export default function CriativoNovoPage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl">
-      {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-label text-neutral-400 mb-6">
         <Link to="/criativos" className="hover:text-purple-700 transition-colors">Criativos</Link>
         <ChevronRight size={14} />
@@ -118,26 +156,13 @@ export default function CriativoNovoPage() {
           const stepNum = (i + 1) as 1 | 2 | 3
           const done = step > stepNum
           const active = step === stepNum
-
           return (
             <div key={label} className="flex items-center">
               <div className="flex items-center gap-2">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold transition-colors ${
-                    done
-                      ? 'bg-purple-700 text-white'
-                      : active
-                      ? 'bg-purple-100 text-purple-700 ring-2 ring-purple-700'
-                      : 'bg-neutral-100 text-neutral-400'
-                  }`}
-                >
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold transition-colors ${done ? 'bg-purple-700 text-white' : active ? 'bg-purple-100 text-purple-700 ring-2 ring-purple-700' : 'bg-neutral-100 text-neutral-400'}`}>
                   {done ? <Check size={13} /> : stepNum}
                 </div>
-                <span
-                  className={`text-label font-medium ${
-                    active ? 'text-purple-700' : done ? 'text-neutral-600' : 'text-neutral-400'
-                  }`}
-                >
+                <span className={`text-label font-medium ${active ? 'text-purple-700' : done ? 'text-neutral-600' : 'text-neutral-400'}`}>
                   {label}
                 </span>
               </div>
@@ -148,6 +173,12 @@ export default function CriativoNovoPage() {
           )
         })}
       </div>
+
+      {erro && (
+        <div className="mb-6 p-4 rounded-xl bg-red-50 border border-red-100 text-body-sm text-red-700">
+          {erro}
+        </div>
+      )}
 
       {/* Step 1 — Briefing */}
       {step === 1 && (
@@ -167,8 +198,12 @@ export default function CriativoNovoPage() {
               <div className="flex items-center gap-3 p-5 rounded-2xl bg-purple-50 border border-purple-100">
                 <Spinner size="md" />
                 <div>
-                  <p className="text-body-md font-semibold text-purple-700">Claude está criando seu roteiro…</p>
-                  <p className="text-label text-purple-400 mt-0.5">Isso leva alguns segundos</p>
+                  <p className="text-body-md font-semibold text-purple-700">Gemini está criando seu roteiro…</p>
+                  <p className="text-label text-purple-400 mt-0.5">
+                    {briefing?.referencias.some((r) => r.tipo === 'url')
+                      ? 'Pesquisando referências e gerando conteúdo…'
+                      : 'Isso leva alguns segundos'}
+                  </p>
                 </div>
               </div>
             </div>
@@ -181,10 +216,7 @@ export default function CriativoNovoPage() {
 
               <div className="flex flex-col gap-3">
                 {script.slides.map((slide, i) => (
-                  <div
-                    key={i}
-                    className="flex items-start gap-3 p-4 rounded-xl border border-neutral-100 bg-white"
-                  >
+                  <div key={i} className="flex items-start gap-3 p-4 rounded-xl border border-neutral-100 bg-white">
                     <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-0.5">
                       <span className="text-[11px] font-bold text-purple-700">{slide.numero}</span>
                     </div>
@@ -221,29 +253,21 @@ export default function CriativoNovoPage() {
       {step === 3 && script && (
         <div className="flex flex-col gap-8">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
-            {/* Editor (esquerda) */}
             <div>
-              <p className="text-label font-semibold text-neutral-500 mb-4 uppercase tracking-wide">
-                Editar slides
-              </p>
+              <p className="text-label font-semibold text-neutral-500 mb-4 uppercase tracking-wide">Editar slides</p>
               <SlideEditor
                 slides={slides}
                 onChange={(i, texto) => {
-                  handleSlideChange(i, texto)
+                  setSlides((prev) => prev.map((s, idx) => (idx === i ? { ...s, texto } : s)))
                   setSlideAtivo(i)
                 }}
               />
             </div>
-
-            {/* Carrossel preview (direita, sticky em desktop) */}
             <div className="lg:sticky lg:top-6">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-label font-semibold text-neutral-500 uppercase tracking-wide">
-                  Preview do carrossel
-                </p>
+                <p className="text-label font-semibold text-neutral-500 uppercase tracking-wide">Preview do carrossel</p>
                 <span className="text-[11px] font-medium text-neutral-400">Arraste →</span>
               </div>
-
               <SlideCarousel
                 current={slideAtivo}
                 onChange={setSlideAtivo}
@@ -261,11 +285,8 @@ export default function CriativoNovoPage() {
             </div>
           </div>
 
-          {/* Legenda preview */}
           <div className="max-w-2xl p-5 rounded-2xl bg-neutral-50 border border-neutral-100">
-            <p className="text-label font-semibold text-neutral-500 mb-2 uppercase tracking-wide">
-              Legenda gerada
-            </p>
+            <p className="text-label font-semibold text-neutral-500 mb-2 uppercase tracking-wide">Legenda gerada</p>
             <p className="text-body-md text-neutral-700 whitespace-pre-line leading-relaxed">{script.legenda}</p>
             <div className="flex flex-wrap gap-2 mt-3">
               {script.hashtags.map((h) => (
@@ -275,11 +296,11 @@ export default function CriativoNovoPage() {
           </div>
 
           <div className="flex gap-3 justify-end">
-            <Button variant="secondary" onClick={handleRegenerar}>
+            <Button variant="secondary" onClick={handleRegenerar} loading={loading}>
               <RotateCcw size={15} />
               Regenerar
             </Button>
-            <Button onClick={handleSalvar} size="lg">
+            <Button onClick={handleSalvar} size="lg" loading={loading}>
               <Check size={16} />
               Salvar criativo
             </Button>

@@ -20,7 +20,7 @@ const FILTROS: { key: Filtro; label: string }[] = [
 
 export default function CriativosPage() {
   const navigate = useNavigate()
-  const { criativos, excluir } = useCriativos()
+  const { criativos, categorias, excluir } = useCriativos()
 
   const [filtro, setFiltro] = useState<Filtro>('todos')
   const [excluindo, setExcluindo] = useState<string | null>(null)
@@ -70,6 +70,7 @@ export default function CriativosPage() {
             <CriativoCard
               key={c.id}
               criativo={c}
+              categoria={categorias.find((cat) => cat.id === c.categoria_id)}
               onDelete={() => setExcluindo(c.id)}
             />
           ))}
