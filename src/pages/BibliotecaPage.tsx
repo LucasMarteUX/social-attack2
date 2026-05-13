@@ -1,0 +1,209 @@
+import { useState, useMemo } from 'react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { Plus, Lightbulb, ChevronRight, Sparkles } from 'lucide-react'
+import Button from '../components/ui/Button'
+import Modal from '../components/ui/Modal'
+import IdeaCard from '../components/ideias/IdeaCard'
+import IdeaForm from '../components/ideias/IdeaForm'
+import Spinner from '../components/ui/Spinner'
+import { useIdeias } from '../hooks/useIdeias'
+import { mockCategorias, type Ideia } from '../data/mock'
+
+type Filtro = 'todas' | 'favoritas' | 'com_conteudo' | 'sem_conteudo'
+
+const FILTROS: { key: Filtro; label: string }[] = [
+  { key: 'todas', label: 'Todas' },
+  { key: 'favoritas', label: 'Favoritas' },
+  { key: 'com_conteudo', label: 'Com conteúdo' },
+  { key: 'sem_conteudo', label: 'Sem conteúdo' },
+]
+
+export default function BibliotecaPage() {
+  const { id: categoriaId } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+
+  const categoria = mockCategorias.find((c) => c.id === categoriaId)
+  const { ideias, criar, editar, excluir, toggleFavorita } = useIdeias(categoriaId!)
+
+  const [filtro, setFiltro] = useState<Filtro>('todas')
+  const [formOpen, setFormOpen] = useState(false)
+  const [editando, setEditando] = useState<Ideia | null>(null)
+  const [excluindo, setExcluindo] = useState<Ideia | null>(null)
+  const [gerandoIA, setGerandoIA] = useState(false)
+
+  const ideasFiltradas = useMemo(() => {
+    switch (filtro) {
+      case 'favoritas': return ideias.filter((i) => i.favorita)
+      case 'com_conteudo': return ideias.filter((i) => i.conteudo_gerado)
+      case 'sem_conteudo': return ideias.filter((i) => !i.conteudo_gerado)
+      default: return ideias
+    }
+  }, [ideias, filtro])
+
+  function handleSave(dados: Pick<Ideia, 'titulo' | 'descricao' | 'referencias'>) {
+    if (editando) {
+      editar(editando.id, dados)
+      setEditando(null)
+    } else {
+      criar(dados)
+    }
+  }
+
+  function handleOpenEdit(ideia: Ideia) {
+    setEditando(ideia)
+    setFormOpen(true)
+  }
+
+  function handleCloseForm() {
+    setFormOpen(false)
+    setEditando(null)
+  }
+
+  // Simulação da geração com IA (dados mockados)
+  async function handleGerarComIA() {
+    setGerandoIA(true)
+    await new Promise((r) => setTimeout(r, 2000))
+    const sugestoes = [
+      { titulo: `Como usar ${categoria?.nome} para crescer no Instagram`, descricao: 'Estratégias práticas e aplicáveis para qualquer perfil.' },
+      { titulo: `3 tendências de ${categoria?.nome} que você precisa conhecer`, descricao: 'O que está dominando o mercado agora e como se posicionar.' },
+      { titulo: `Erros comuns em ${categoria?.nome} e como evitá-los`, descricao: 'Aprenda com os erros mais frequentes e destaque-se.' },
+    ]
+    sugestoes.forEach((s) => criar({ titulo: s.titulo, descricao: s.descricao, referencias: [] }))
+    setGerandoIA(false)
+  }
+
+  if (!categoria) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24">
+        <p className="text-body-md text-neutral-500">Categoria não encontrada.</p>
+        <Link to="/categorias" className="mt-4 text-purple-700 text-body-md font-medium hover:underline">
+          Voltar para Categorias
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-label text-neutral-400 mb-6">
+        <Link to="/categorias" className="hover:text-purple-700 transition-colors">Categorias</Link>
+        <ChevronRight size={14} />
+        <span className="font-medium" style={{ color: categoria.cor }}>{categoria.nome}</span>
+      </div>
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: categoria.cor }} />
+            <h1 className="text-heading-xl font-bold text-neutral-900">Biblioteca de Ideias</h1>
+          </div>
+          <p className="text-body-md text-neutral-500">
+            {ideias.length} {ideias.length === 1 ? 'ideia' : 'ideias'} em {categoria.nome}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={handleGerarComIA} loading={gerandoIA}>
+            {!gerandoIA && <Sparkles size={15} />}
+            Gerar com IA
+          </Button>
+          <Button onClick={() => setFormOpen(true)}>
+            <Plus size={16} />
+            Nova ideia
+          </Button>
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div className="flex gap-2 mb-6 flex-wrap">
+        {FILTROS.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFiltro(f.key)}
+            className={`px-4 py-1.5 rounded-full text-label font-medium border transition-colors ${
+              filtro === f.key
+                ? 'border-purple-600 bg-purple-50 text-purple-700'
+                : 'border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Loading IA */}
+      {gerandoIA && (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-purple-50 border border-purple-100 mb-6">
+          <Spinner size="sm" />
+          <p className="text-body-md text-purple-700 font-medium">Claude está gerando ideias para você…</p>
+        </div>
+      )}
+
+      {/* Lista de ideias */}
+      {ideasFiltradas.length === 0 ? (
+        <EmptyState filtro={filtro} onNew={() => setFormOpen(true)} />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {ideasFiltradas.map((ideia) => (
+            <IdeaCard
+              key={ideia.id}
+              ideia={ideia}
+              corCategoria={categoria.cor}
+              onToggleFavorita={() => toggleFavorita(ideia.id)}
+              onEdit={() => handleOpenEdit(ideia)}
+              onDelete={() => setExcluindo(ideia)}
+              onCriarCarrossel={() => navigate(`/criativos/novo?ideia=${ideia.id}`)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Modal criar / editar */}
+      <IdeaForm
+        open={formOpen}
+        onClose={handleCloseForm}
+        onSave={handleSave}
+        inicial={editando}
+      />
+
+      {/* Modal confirmar exclusão */}
+      <Modal open={!!excluindo} onClose={() => setExcluindo(null)} title="Excluir ideia">
+        <p className="text-body-md text-neutral-600 mb-6">
+          Tem certeza que deseja excluir{' '}
+          <strong className="text-neutral-900">"{excluindo?.titulo}"</strong>?
+        </p>
+        <div className="flex gap-3 justify-end">
+          <Button variant="ghost" onClick={() => setExcluindo(null)}>Cancelar</Button>
+          <Button
+            variant="destructive"
+            onClick={() => { if (excluindo) excluir(excluindo.id); setExcluindo(null) }}
+          >
+            Excluir
+          </Button>
+        </div>
+      </Modal>
+    </div>
+  )
+}
+
+function EmptyState({ filtro, onNew }: { filtro: Filtro; onNew: () => void }) {
+  const msg = filtro === 'todas'
+    ? 'Nenhuma ideia ainda. Crie manualmente ou gere com IA.'
+    : 'Nenhuma ideia encontrada com esse filtro.'
+
+  return (
+    <div className="flex flex-col items-center justify-center py-20 text-center">
+      <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center mb-4">
+        <Lightbulb size={24} className="text-purple-600" />
+      </div>
+      <p className="text-body-md text-neutral-500 mb-5 max-w-xs">{msg}</p>
+      {filtro === 'todas' && (
+        <Button onClick={onNew}>
+          <Plus size={16} /> Nova ideia
+        </Button>
+      )}
+    </div>
+  )
+}

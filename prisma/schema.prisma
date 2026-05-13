@@ -1,0 +1,233 @@
+// Social Attack — Prisma Schema
+// Banco: PostgreSQL (Supabase)
+// Atualizado: 2026-05-11
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── USER ─────────────────────────────────────────────────────────────────────
+// V1 sem autenticação. Preparado para Supabase Auth na V2.
+
+model User {
+  id         String   @id @default(cuid())
+  email      String   @unique
+  nome       String
+  avatar_url String?
+  criado_em  DateTime @default(now())
+
+  categorias   Categoria[]
+  ideias       Ideia[]
+  criativos    Criativo[]
+  agendamentos Agendamento[]
+  todos        Todo[]
+  tons_de_voz  TomDeVoz[]
+
+  @@map("users")
+}
+
+// ─── CATEGORIA ────────────────────────────────────────────────────────────────
+
+model Categoria {
+  id        String   @id @default(cuid())
+  nome      String
+  descricao String?
+  cor       String   // hex, ex: "#6D28D9"
+  icone     String   // nome do ícone Lucide, ex: "TrendingUp"
+  criado_em DateTime @default(now())
+
+  user_id String?
+  user    User?   @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  ideias    Ideia[]
+  criativos Criativo[]
+
+  @@map("categorias")
+}
+
+// ─── IDEIA ────────────────────────────────────────────────────────────────────
+
+model Ideia {
+  id              String   @id @default(cuid())
+  titulo          String
+  descricao       String?
+  favorita        Boolean  @default(false)
+  conteudo_gerado Boolean  @default(false)
+  criado_em       DateTime @default(now())
+  atualizado_em   DateTime @updatedAt
+
+  categoria_id String
+  categoria    Categoria @relation(fields: [categoria_id], references: [id], onDelete: Cascade)
+
+  user_id String?
+  user    User?   @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  referencias Referencia[]
+  criativos   Criativo[]
+
+  @@map("ideias")
+}
+
+// ─── REFERÊNCIA ───────────────────────────────────────────────────────────────
+// Referências vinculadas a uma ideia: links, arquivos ou trechos de texto.
+
+model Referencia {
+  id        String         @id @default(cuid())
+  tipo      ReferenciaType
+  valor     String         // URL ou conteúdo de texto livre
+  nome      String?        // Nome do arquivo (quando tipo = arquivo | pdf)
+  criado_em DateTime       @default(now())
+
+  ideia_id String
+  ideia    Ideia  @relation(fields: [ideia_id], references: [id], onDelete: Cascade)
+
+  @@map("referencias")
+}
+
+enum ReferenciaType {
+  url
+  texto
+  arquivo
+  pdf
+}
+
+// ─── TOM DE VOZ ───────────────────────────────────────────────────────────────
+
+model TomDeVoz {
+  id        String   @id @default(cuid())
+  nome      String
+  descricao String
+  exemplo   String?  // frase de exemplo do tom
+  criado_em DateTime @default(now())
+
+  user_id String?
+  user    User?   @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  criativos Criativo[]
+
+  @@map("tons_de_voz")
+}
+
+// ─── CRIATIVO ─────────────────────────────────────────────────────────────────
+
+model Criativo {
+  id            String         @id @default(cuid())
+  titulo        String
+  tipo          CriativoTipo   @default(carrossel)
+  status        CriativoStatus @default(rascunho)
+  legenda       String?
+  hashtags      String[]       // array de strings no PostgreSQL
+  prompt_imagem String?        // prompt usado para gerar imagens via Gemini
+  criado_em     DateTime       @default(now())
+  atualizado_em DateTime       @updatedAt
+
+  ideia_id String?
+  ideia    Ideia?  @relation(fields: [ideia_id], references: [id], onDelete: SetNull)
+
+  categoria_id String
+  categoria    Categoria @relation(fields: [categoria_id], references: [id])
+
+  tom_de_voz_id String?
+  tom_de_voz    TomDeVoz? @relation(fields: [tom_de_voz_id], references: [id], onDelete: SetNull)
+
+  user_id String?
+  user    User?   @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  slides       Slide[]
+  agendamentos Agendamento[]
+
+  @@map("criativos")
+}
+
+enum CriativoTipo {
+  carrossel
+  imagem_unica
+  reels_roteiro
+}
+
+enum CriativoStatus {
+  rascunho
+  revisao
+  pronto
+  agendado
+  publicado
+}
+
+// ─── SLIDE ────────────────────────────────────────────────────────────────────
+// Slides de um carrossel. Máximo de 20 por criativo.
+
+model Slide {
+  id            String   @id @default(cuid())
+  numero        Int      // 1 a 20, define a ordem
+  texto         String
+  url_imagem    String?  // URL no Supabase Storage (gerado pelo Gemini)
+  prompt_imagem String?  // prompt específico deste slide
+  criado_em     DateTime @default(now())
+
+  criativo_id String
+  criativo    Criativo @relation(fields: [criativo_id], references: [id], onDelete: Cascade)
+
+  @@unique([criativo_id, numero])
+  @@map("slides")
+}
+
+// ─── AGENDAMENTO ──────────────────────────────────────────────────────────────
+
+model Agendamento {
+  id              String            @id @default(cuid())
+  data_publicacao DateTime
+  plataforma      Plataforma        @default(instagram)
+  status          AgendamentoStatus @default(agendado)
+  notas           String?
+  criado_em       DateTime          @default(now())
+  atualizado_em   DateTime          @updatedAt
+
+  criativo_id String
+  criativo    Criativo @relation(fields: [criativo_id], references: [id], onDelete: Cascade)
+
+  user_id String?
+  user    User?   @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@map("agendamentos")
+}
+
+enum Plataforma {
+  instagram
+  linkedin
+  twitter
+  tiktok
+}
+
+enum AgendamentoStatus {
+  agendado
+  publicado
+  cancelado
+}
+
+// ─── TODO ─────────────────────────────────────────────────────────────────────
+
+model Todo {
+  id            String         @id @default(cuid())
+  titulo        String
+  concluida     Boolean        @default(false)
+  prazo         DateTime?
+  prioridade    TodoPrioridade @default(media)
+  criado_em     DateTime       @default(now())
+  atualizado_em DateTime       @updatedAt
+
+  user_id String?
+  user    User?   @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@map("todos")
+}
+
+enum TodoPrioridade {
+  baixa
+  media
+  alta
+}
