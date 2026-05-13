@@ -10,21 +10,29 @@ export function useCriativos() {
 
   const carregar = useCallback(async () => {
     setLoading(true)
-    const [{ data: criData, error: criError }, { data: catData }] = await Promise.all([
-      supabase.from('criativos').select('*, slides(*)').order('criado_em', { ascending: false }),
-      supabase.from('categorias').select('*'),
-    ])
-    if (criError) setError(criError.message)
-    else {
-      const mapped = (criData ?? []).map((c: any) => ({
-        ...c,
-        slides: (c.slides ?? []).sort((a: any, b: any) => a.numero - b.numero),
-        referencias: [],
-      }))
-      setCriativos(mapped)
+    try {
+      const [{ data: criData, error: criError }, { data: catData }] = await Promise.all([
+        supabase.from('criativos').select('*, slides(*)').order('criado_em', { ascending: false }),
+        supabase.from('categorias').select('*'),
+      ])
+      if (criError) {
+        setCriativos([])
+        setError(null)
+      } else {
+        const mapped = (criData ?? []).map((c: any) => ({
+          ...c,
+          slides: (c.slides ?? []).sort((a: any, b: any) => a.numero - b.numero),
+          referencias: [],
+        }))
+        setCriativos(mapped)
+      }
+      setCategorias(catData ?? [])
+    } catch {
+      setCriativos([])
+      setCategorias([])
+    } finally {
+      setLoading(false)
     }
-    setCategorias(catData ?? [])
-    setLoading(false)
   }, [])
 
   useEffect(() => { carregar() }, [carregar])

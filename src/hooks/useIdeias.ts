@@ -10,20 +10,27 @@ export function useIdeias(categoriaId: string) {
   const carregar = useCallback(async () => {
     if (!categoriaId) return
     setLoading(true)
-    const { data, error } = await supabase
-      .from('ideias')
-      .select('*, referencias(*)')
-      .eq('categoria_id', categoriaId)
-      .order('criado_em', { ascending: false })
-    if (error) setError(error.message)
-    else {
-      const ideiasMapped = (data ?? []).map((i: any) => ({
-        ...i,
-        referencias: (i.referencias ?? []).map((r: any) => ({ tipo: r.tipo, valor: r.valor })),
-      }))
-      setIdeias(ideiasMapped)
+    try {
+      const { data, error } = await supabase
+        .from('ideias')
+        .select('*, referencias(*)')
+        .eq('categoria_id', categoriaId)
+        .order('criado_em', { ascending: false })
+      if (error) {
+        setIdeias([])
+        setError(null)
+      } else {
+        const ideiasMapped = (data ?? []).map((i: any) => ({
+          ...i,
+          referencias: (i.referencias ?? []).map((r: any) => ({ tipo: r.tipo, valor: r.valor })),
+        }))
+        setIdeias(ideiasMapped)
+      }
+    } catch {
+      setIdeias([])
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [categoriaId])
 
   useEffect(() => { carregar() }, [carregar])

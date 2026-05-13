@@ -9,13 +9,22 @@ export function useTodos() {
 
   const carregar = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('todos')
-      .select('*')
-      .order('criado_em', { ascending: false })
-    if (error) setError(error.message)
-    else setTodos(data ?? [])
-    setLoading(false)
+    try {
+      const { data, error } = await supabase
+        .from('todos')
+        .select('*')
+        .order('criado_em', { ascending: false })
+      if (error) {
+        setTodos([])
+        setError(null)
+      } else {
+        setTodos(data ?? [])
+      }
+    } catch {
+      setTodos([])
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => { carregar() }, [carregar])

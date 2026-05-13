@@ -13,13 +13,22 @@ export function useAgenda() {
 
   const carregar = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('agendamentos')
-      .select('*, criativo:criativos(*, categoria:categorias(*))')
-      .order('data_publicacao', { ascending: true })
-    if (error) setError(error.message)
-    else setAgendamentos(data ?? [])
-    setLoading(false)
+    try {
+      const { data, error } = await supabase
+        .from('agendamentos')
+        .select('*, criativo:criativos(*, categoria:categorias(*))')
+        .order('data_publicacao', { ascending: true })
+      if (error) {
+        setAgendamentos([])
+        setError(null)
+      } else {
+        setAgendamentos(data ?? [])
+      }
+    } catch {
+      setAgendamentos([])
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => { carregar() }, [carregar])

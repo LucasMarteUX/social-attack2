@@ -9,12 +9,20 @@ export function useTomDeVoz() {
 
   const carregar = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('tons_de_voz')
-      .select('*')
-      .order('criado_em', { ascending: true })
-    if (error) setError(error.message)
-    else setTons(data ?? [])
+    try {
+      const { data, error } = await supabase
+        .from('tons_de_voz')
+        .select('*')
+        .order('criado_em', { ascending: true })
+      if (error) {
+        setTons([])
+        setError(null)
+      } else {
+        setTons(data ?? [])
+      }
+    } catch {
+      setTons([])
+    }
     setLoading(false)
   }, [])
 

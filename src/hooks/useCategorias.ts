@@ -15,12 +15,16 @@ export function useCategorias() {
 
   const carregar = useCallback(async () => {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('categorias')
-      .select('*')
-      .order('criado_em', { ascending: false })
-    if (error) { setError(error.message) }
-    else {
+    try {
+      const { data, error } = await supabase
+        .from('categorias')
+        .select('*')
+        .order('criado_em', { ascending: false })
+      if (error) {
+        setCategorias([])
+        setError(null)
+        return
+      }
       const cats = data ?? []
       setCategorias(cats)
       const statsMap: Record<string, CategoriaStats> = {}
@@ -32,8 +36,11 @@ export function useCategorias() {
         statsMap[cat.id] = { ideias: ideias ?? 0, criativos: criativos ?? 0 }
       }))
       setStats(statsMap)
+    } catch {
+      setCategorias([])
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }, [])
 
   useEffect(() => { carregar() }, [carregar])
