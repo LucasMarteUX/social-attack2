@@ -96,7 +96,7 @@ export default function CriativoNovoPage() {
   const nomeCategoria = categoriaInicial?.nome
 
   return (
-    <div className="max-w-5xl">
+    <div className="mx-auto w-full max-w-5xl">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-label text-neutral-400 mb-6">
         <Link to="/criativos" className="hover:text-purple-700 transition-colors">Criativos</Link>
