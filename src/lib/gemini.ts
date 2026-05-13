@@ -48,10 +48,19 @@ async function callGemini(prompt: string, useSearch = false): Promise<string> {
 }
 
 function extrairJSON<T>(text: string, arrayWrapper = false): T {
+  // Gemini 2.5 envolve JSON em ```json ... ``` — remover antes de parsear
+  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+  const source = fenceMatch ? fenceMatch[1] : text
+
   const pattern = arrayWrapper ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/
-  const match = text.match(pattern)
+  const match = source.match(pattern)
   if (!match) throw new Error('Resposta inválida do Gemini: JSON não encontrado')
-  return JSON.parse(match[0]) as T
+
+  try {
+    return JSON.parse(match[0]) as T
+  } catch {
+    throw new Error('Resposta inválida do Gemini: JSON malformado')
+  }
 }
 
 export async function gerarRoteiro(params: {
