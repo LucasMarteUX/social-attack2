@@ -1,6 +1,10 @@
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string
-const GEMINI_TEXT_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
-const GEMINI_IMAGE_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${GEMINI_API_KEY}`
+
+// gemini-2.5-flash: modelo estável para geração de texto (substitui gemini-2.0-flash)
+const GEMINI_TEXT_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
+
+// imagen-4.0-generate-001: modelo atual para geração de imagens (substitui imagen-3.0-generate-002)
+const GEMINI_IMAGE_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict`
 
 export interface IdeaSuggestion {
   titulo: string
@@ -115,7 +119,10 @@ export async function generateSlideImage(slideText: string): Promise<string> {
 
   const response = await fetch(GEMINI_IMAGE_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': GEMINI_API_KEY,
+    },
     body: JSON.stringify({
       instances: [{ prompt }],
       parameters: { sampleCount: 1, aspectRatio: '1:1' },
