@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS carousels (
   references_text TEXT,
   total_slides INTEGER DEFAULT 5,
   design_system_id UUID REFERENCES design_systems(id) ON DELETE SET NULL,
-  tone_of_voice_id UUID REFERENCES tons_de_voz(id) ON DELETE SET NULL,
+  tone_of_voice_id TEXT REFERENCES tons_de_voz(id) ON DELETE SET NULL,
   status VARCHAR(20) DEFAULT 'draft',
   version INTEGER DEFAULT 1,
   parent_carousel_id UUID REFERENCES carousels(id) ON DELETE SET NULL,
