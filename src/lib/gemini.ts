@@ -57,24 +57,133 @@ async function callGemini(prompt: string, useSearch = false): Promise<string> {
     throw new Error(`Gemini API error ${response.status}: ${err}`)
   }
 
-  const data = await response.json()
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+  const data = (await response.json()) as Record<string, unknown>
+  const blocked = data.promptFeedback && typeof data.promptFeedback === 'object'
+    ? (data.promptFeedback as { blockReason?: string }).blockReason
+    : undefined
+  if (blocked) {
+    throw new Error(`Gemini bloqueou o prompt (${blocked}). Reformule título ou referências.`)
+  }
+
+  const candidates = data.candidates as Array<{
+    finishReason?: string
+    content?: { parts?: Array<{ text?: string }> }
+  }> | undefined
+  const cand = candidates?.[0]
+  if (!cand) {
+    const hint = JSON.stringify(data.promptFeedback ?? data.error ?? {}).slice(0, 350)
+    throw new Error(`Gemini não retornou candidatos. ${hint || 'Resposta inesperada.'}`)
+  }
+
+  const fr = cand.finishReason
+  const frStr = fr != null ? String(fr) : ''
+  const finishOk =
+    !frStr ||
+    frStr === 'STOP' ||
+    frStr === 'MAX_TOKENS' ||
+    frStr === '1' ||
+    frStr === '2' ||
+    /_STOP$/.test(frStr) ||
+    /_MAX_TOKENS$/.test(frStr)
+  if (!finishOk) {
+    throw new Error(`Gemini não completou o texto (${frStr}). Tente sem URLs ou com prompt menor.`)
+  }
+
+  const text =
+    cand.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
+  if (!text.trim()) {
+    throw new Error('Gemini retornou texto vazio (possível bloqueio ou erro no modelo).')
+  }
+  return text
+}
+
+function extrairObjetoBalanceado(s: string, abre: '{' | '['): string | null {
+  const start = s.indexOf(abre)
+  if (start === -1) return null
+  const fecha = abre === '{' ? '}' : ']'
+  let depth = 0
+  let inString = false
+  let escape = false
+  for (let i = start; i < s.length; i++) {
+    const c = s[i]
+    if (escape) {
+      escape = false
+      continue
+    }
+    if (inString) {
+      if (c === '\\') escape = true
+      else if (c === '"') inString = false
+      continue
+    }
+    if (c === '"') {
+      inString = true
+      continue
+    }
+    if (c === abre) depth++
+    else if (c === fecha) {
+      depth--
+      if (depth === 0) return s.slice(start, i + 1)
+    }
+  }
+  return null
 }
 
 function extrairJSON<T>(text: string, arrayWrapper = false): T {
-  // Gemini 2.5 envolve JSON em ```json ... ``` — remover antes de parsear
-  const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
-  const source = fenceMatch ? fenceMatch[1] : text
-
-  const pattern = arrayWrapper ? /\[[\s\S]*\]/ : /\{[\s\S]*\}/
-  const match = source.match(pattern)
-  if (!match) throw new Error('Resposta inválida do Gemini: JSON não encontrado')
-
-  try {
-    return JSON.parse(match[0]) as T
-  } catch {
-    throw new Error('Resposta inválida do Gemini: JSON malformado')
+  const trimmed = text.trim()
+  if (!trimmed) {
+    throw new Error('Resposta vazia do Gemini.')
   }
+
+  const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+  const bloques = fenceMatch ? [fenceMatch[1].trim(), trimmed] : [trimmed]
+
+  const tryParse = (chunk: string): T | null => {
+    try {
+      return JSON.parse(chunk) as T
+    } catch {
+      return null
+    }
+  }
+
+  for (const chunk of bloques) {
+    if (arrayWrapper) {
+      const whole = tryParse(chunk)
+      if (whole !== null && Array.isArray(whole)) return whole
+
+      const arrRaw = extrairObjetoBalanceado(chunk, '[')
+      if (arrRaw) {
+        const parsed = tryParse(arrRaw)
+        if (parsed !== null) return parsed as T
+      }
+      const greedy = chunk.match(/\[[\s\S]*\]/)
+      if (greedy) {
+        const parsed = tryParse(greedy[0])
+        if (parsed !== null) return parsed as T
+      }
+    } else {
+      const whole = tryParse(chunk)
+      if (whole !== null && typeof whole === 'object' && whole !== null && !Array.isArray(whole)) {
+        return whole
+      }
+
+      const objRaw = extrairObjetoBalanceado(chunk, '{')
+      if (objRaw) {
+        const parsed = tryParse(objRaw)
+        if (parsed !== null) return parsed as T
+      }
+
+      const greedy = chunk.match(/\{[\s\S]*\}/)
+      if (greedy) {
+        const parsed = tryParse(greedy[0])
+        if (parsed !== null) return parsed as T
+      }
+    }
+  }
+
+  const snippet = trimmed.slice(0, 280)
+  throw new Error(
+    `Resposta inválida do Gemini: JSON não encontrado. Trecho: ${snippet}${trimmed.length > 280 ? '…' : ''}`
+  )
 }
 
 export async function gerarRoteiro(params: {

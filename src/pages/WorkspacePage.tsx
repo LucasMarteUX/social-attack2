@@ -84,6 +84,10 @@ export default function WorkspacePage() {
   }, [id, isNew])
 
   useEffect(() => {
+    slidesInitialized.current = false
+  }, [carouselId])
+
+  useEffect(() => {
     let cancelled = false
     async function syncDsContext() {
       if (!carouselId || isNew) return
@@ -132,16 +136,35 @@ export default function WorkspacePage() {
     renderizarSlideNodes(slides, slideStylesRef.current)
   }, [slides]) // eslint-disable-line
 
+  function buildMainNodeData(): MainNodeData {
+    const car = carouselId ? getById(carouselId) : null
+    const prefill =
+      car && !isNew
+        ? {
+            titulo: car.title,
+            descricao: car.description ?? '',
+            referencesUrls: [...(car.references_urls ?? [])],
+            referencesText: car.references_text ?? '',
+            tomId: car.tone_of_voice_id ?? '',
+            designSystemId: car.design_system_id ?? '',
+            totalSlides: car.total_slides,
+          }
+        : undefined
+    return {
+      onGerar: async (p: GerarParams) => handleGerarRef.current(p),
+      gerating: false,
+      geracaoErro,
+      prefillKey: carouselId ?? 'novo',
+      prefill,
+    }
+  }
+
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>(
     isNew ? [{
       id: MAIN_NODE_ID,
       type: 'mainNode',
       position: { x: MAIN_NODE_X, y: MAIN_NODE_Y },
-      data: {
-        onGerar: async (p: GerarParams) => handleGerarRef.current(p),
-        gerating: false,
-        geracaoErro: null,
-      },
+      data: buildMainNodeData() as unknown as Record<string, unknown>,
     }] : []
   )
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
@@ -151,11 +174,41 @@ export default function WorkspacePage() {
     setNodes((nds) =>
       nds.some((n) => n.id === MAIN_NODE_ID)
         ? nds.map((n) =>
-            n.id === MAIN_NODE_ID ? { ...n, data: { ...n.data, geracaoErro } } : n
+            n.id === MAIN_NODE_ID ? { ...n, data: { ...(n.data as unknown as MainNodeData), geracaoErro } as Record<string, unknown> } : n
           )
         : nds
     )
   }, [geracaoErro, setNodes])
+
+  useEffect(() => {
+    if (isNew || !carouselId) return
+    const car = getById(carouselId)
+    if (!car) return
+    setNodes((nds) =>
+      nds.some((n) => n.id === MAIN_NODE_ID)
+        ? nds.map((n) =>
+            n.id === MAIN_NODE_ID
+              ? {
+                  ...n,
+                  data: {
+                    ...(n.data as unknown as MainNodeData),
+                    prefillKey: carouselId,
+                    prefill: {
+                      titulo: car.title,
+                      descricao: car.description ?? '',
+                      referencesUrls: [...(car.references_urls ?? [])],
+                      referencesText: car.references_text ?? '',
+                      tomId: car.tone_of_voice_id ?? '',
+                      designSystemId: car.design_system_id ?? '',
+                      totalSlides: car.total_slides,
+                    },
+                  } as Record<string, unknown>,
+                }
+              : n
+          )
+        : nds
+    )
+  }, [carouselId, isNew, carousels]) // eslint-disable-line
 
   async function handleGerar(params: {
     titulo: string
@@ -252,11 +305,14 @@ export default function WorkspacePage() {
       navigate(`/workspace/${carousel.id}`, { replace: true })
 
       if (params.autoGerarImagens) {
-        gerarImagensEmBackground(novosSlides, carousel.id, {
+        void gerarImagensEmBackground(novosSlides, carousel.id, {
           styles: estilos,
           designSystemMarkdown: params.designSystemMarkdown,
           referenceDescription,
-        }).catch(console.error)
+        }).catch((e) => {
+          console.error(e)
+          setAvisoImagens(e instanceof Error ? e.message : 'Falha ao gerar imagens em segundo plano.')
+        })
       }
 
     } catch (e) {
@@ -352,24 +408,28 @@ export default function WorkspacePage() {
     const totalWidth = slidesList.length * SLIDE_GAP_X
     const startX = MAIN_NODE_X - totalWidth / 2 + SLIDE_GAP_X / 2
 
+    const mainNode: Node = {
+      id: MAIN_NODE_ID,
+      type: 'mainNode',
+      position: { x: MAIN_NODE_X, y: MAIN_NODE_Y },
+      data: buildMainNodeData() as unknown as Record<string, unknown>,
+    }
+
     const novosNodes: Node[] = slidesList.map((slide, i) => ({
       id: `slide-${slide.id}`,
       type: 'slideNode',
-      position: { x: startX + i * SLIDE_GAP_X, y: isNew ? MAIN_NODE_Y + SLIDE_OFFSET_Y : MAIN_NODE_Y },
+      position: { x: startX + i * SLIDE_GAP_X, y: MAIN_NODE_Y + SLIDE_OFFSET_Y },
       data: buildSlideData(slide, estilos, slidesList.length),
     }))
 
-    const novosEdges: Edge[] = isNew ? slidesList.map((slide) => ({
+    const novosEdges: Edge[] = slidesList.map((slide) => ({
       id: `edge-main-${slide.id}`,
       source: MAIN_NODE_ID,
       target: `slide-${slide.id}`,
       style: { stroke: '#6D28D9', strokeWidth: 1.5, opacity: 0.4 },
-    })) : []
+    }))
 
-    setNodes((nds) => {
-      const mainNode = nds.find((n) => n.id === MAIN_NODE_ID)
-      return mainNode ? [mainNode, ...novosNodes] : novosNodes
-    })
+    setNodes([mainNode, ...novosNodes])
     setEdges(novosEdges)
   }
 

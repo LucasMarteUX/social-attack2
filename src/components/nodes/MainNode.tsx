@@ -1,10 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import { Link2, X, Plus, Sparkles } from 'lucide-react'
 import Button from '../ui/Button'
 import { useTomDeVoz } from '../../hooks/useTomDeVoz'
 import { useDesignSystems } from '../../hooks/useDesignSystems'
 import type { NodeCarouselScript } from '../../lib/gemini'
+
+export interface MainNodePrefill {
+  titulo: string
+  descricao: string
+  referencesUrls: string[]
+  referencesText: string
+  tomId: string
+  designSystemId: string
+  totalSlides: number
+}
 
 export interface MainNodeData {
   onGerar: (params: {
@@ -23,6 +33,10 @@ export interface MainNodeData {
   }) => Promise<void>
   gerating?: boolean
   geracaoErro?: string | null
+  /** Ao reabrir um workspace, preenche o formulário a partir do carrossel salvo */
+  prefill?: MainNodePrefill | null
+  /** Normalmente o id do carrossel ou "novo"; mudança reaplica o prefill uma vez */
+  prefillKey?: string | null
 }
 
 interface Props {
@@ -32,6 +46,8 @@ interface Props {
 export default function MainNode({ data }: Props) {
   const { tons } = useTomDeVoz()
   const { designSystems } = useDesignSystems()
+
+  const appliedPrefillKey = useRef<string | null>(null)
 
   const [titulo, setTitulo] = useState('')
   const [descricao, setDescricao] = useState('')
@@ -43,6 +59,21 @@ export default function MainNode({ data }: Props) {
   const [totalSlides, setTotalSlides] = useState(5)
   const [autoGerarImagens, setAutoGerarImagens] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+
+  useEffect(() => {
+    const key = data.prefillKey
+    const p = data.prefill
+    if (!p || key == null || key === '' || key === 'novo') return
+    if (appliedPrefillKey.current === key) return
+    appliedPrefillKey.current = key
+    setTitulo(p.titulo)
+    setDescricao(p.descricao)
+    setUrls([...p.referencesUrls])
+    setReferencesText(p.referencesText)
+    setTomId(p.tomId)
+    setDesignSystemId(p.designSystemId)
+    setTotalSlides(Math.min(20, Math.max(3, p.totalSlides)))
+  }, [data.prefill, data.prefillKey])
 
   function adicionarUrl() {
     const url = urlInput.trim()
