@@ -8,8 +8,17 @@ const GEMINI_TEXT_URL = `https://generativelanguage.googleapis.com/v1beta/models
 
 const GEMINI_IMAGE_PREDICT = 'https://generativelanguage.googleapis.com/v1beta/models'
 
-/** Ordem: tenta o modelo mais novo e faz fallback se o projeto não tiver acesso. */
-const IMAGEN_MODEL_IDS = ['imagen-4.0-generate-001', 'imagen-3.0-generate-002'] as const
+/** Ordem: qualidade → velocidade. Evita imagen-3.x (indisponível em :predict no v1beta). */
+const IMAGEN_MODEL_IDS = ['imagen-4.0-generate-001', 'imagen-4.0-fast-generate-001'] as const
+
+const IMAGEN_PROMPT_FALLBACK_MAX = 720
+
+function simplifyImagenPrompt(full: string): string {
+  const t = full.trim()
+  if (t.length <= IMAGEN_PROMPT_FALLBACK_MAX) return t
+  const head = t.slice(0, IMAGEN_PROMPT_FALLBACK_MAX).trim()
+  return `${head}\n\n(Resumo) Slide editorial Instagram 4:5, texto legível, design limpo, sem marcas d'água.`
+}
 
 export interface IdeaSuggestion {
   titulo: string
@@ -363,6 +372,18 @@ async function predictImagenModel(
     throw new Error(`Imagen (${modelId}) ${response.status}: ${detail}`)
   }
 
+  if (data === null || (typeof data === 'object' && Object.keys(data as object).length === 0)) {
+    throw new Error(`Imagen (${modelId}): resposta vazia {} (filtro de segurança ou cota; tente prompt mais curto)`)
+  }
+
+  const preds =
+    data && typeof data === 'object' && Array.isArray((data as { predictions?: unknown }).predictions)
+      ? ((data as { predictions: unknown[] }).predictions)
+      : null
+  if (preds && preds.length === 0) {
+    throw new Error(`Imagen (${modelId}): predictions vazio`)
+  }
+
   const base64 = extractImagenBase64(data)
   if (!base64) throw new Error(`Imagen (${modelId}): resposta sem imagem em base64`)
 
@@ -384,11 +405,17 @@ export async function generateSlideImage(
 
   let lastErr: Error | null = null
   try {
+    const promptVariants = [prompt]
+    const short = simplifyImagenPrompt(prompt)
+    if (short !== prompt) promptVariants.push(short)
+
     for (const modelId of IMAGEN_MODEL_IDS) {
-      try {
-        return await predictImagenModel(modelId, prompt, aspectRatio, controller.signal)
-      } catch (e) {
-        lastErr = e instanceof Error ? e : new Error(String(e))
+      for (const p of promptVariants) {
+        try {
+          return await predictImagenModel(modelId, p, aspectRatio, controller.signal)
+        } catch (e) {
+          lastErr = e instanceof Error ? e : new Error(String(e))
+        }
       }
     }
     throw lastErr ?? new Error('Nenhum modelo Imagen respondeu')
