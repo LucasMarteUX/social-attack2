@@ -14,7 +14,7 @@ interface AIInsightCardProps {
 const toneClasses: Record<Tone, { wrap: string; iconBg: string; labelClass: string }> = {
   beet: {
     wrap: 'border border-line/[0.12] bg-accent/[0.06]',
-    iconBg: 'bg-accent text-bg',
+    iconBg: 'bg-accent text-white',
     labelClass: 'text-ink-muted',
   },
   lavender: {

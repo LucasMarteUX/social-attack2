@@ -159,7 +159,7 @@ export default function CriativoNovoPage() {
           return (
             <div key={label} className="flex items-center">
               <div className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold transition-colors ${done ? 'bg-accent text-bg' : active ? 'bg-line/[0.08] text-ink ring-2 ring-accent' : 'bg-line/[0.06] text-ink-faint'}`}>
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold transition-colors ${done ? 'bg-accent text-white' : active ? 'bg-line/[0.08] text-ink ring-2 ring-accent' : 'bg-line/[0.06] text-ink-faint'}`}>
                   {done ? <Check size={13} /> : stepNum}
                 </div>
                 <span className={`text-label font-medium ${active ? 'text-ink' : done ? 'text-ink-muted' : 'text-ink-faint'}`}>

@@ -32,7 +32,7 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="flex items-center justify-center gap-3 mb-10">
           <div className="w-11 h-11 bg-accent rounded-2xl flex items-center justify-center shadow-lg">
-            <Zap size={20} className="text-bg" fill="currentColor" />
+            <Zap size={20} className="text-white" fill="currentColor" />
           </div>
           <div>
             <p className="text-xl font-bold text-ink leading-tight tracking-tight">Social Attack</p>
@@ -90,7 +90,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || !email.trim() || !password}
-              className="w-full py-2.5 rounded-xl bg-accent text-bg text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mt-1"
+              className="w-full py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent-strong disabled:opacity-50 disabled:cursor-not-allowed transition-colors mt-1"
             >
               {loading ? 'Entrando…' : 'Entrar'}
             </button>

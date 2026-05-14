@@ -43,7 +43,7 @@ export default function Sidebar({ onNavClick }: SidebarProps) {
       <Link
         to="/workspace/novo"
         onClick={onNavClick}
-        className="mb-6 mx-1 flex items-center justify-center gap-2 rounded-xl bg-accent text-bg font-semibold text-body-sm py-2.5 px-3 hover:bg-accent-strong transition-colors tracking-tight shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+        className="mb-6 mx-1 flex items-center justify-center gap-2 rounded-xl bg-accent text-white font-semibold text-body-sm py-2.5 px-3 hover:bg-accent-strong transition-colors tracking-tight shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
       >
         <Plus size={18} strokeWidth={2} />
         Criar

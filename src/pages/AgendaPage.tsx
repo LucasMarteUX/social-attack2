@@ -224,7 +224,7 @@ export default function AgendaPage() {
                     <div
                       key={i}
                       className={`aspect-square sm:aspect-auto sm:min-h-[88px] p-1.5 rounded-xl border transition-colors ${
-                        d.dia === null ? 'border-transparent' : isHoje ? 'border-accent/35 bg-accent/[0.08]/40' : 'border-line/[0.08] hover:bg-line/[0.04]'
+                        d.dia === null ? 'border-transparent' : isHoje ? 'border-accent/35 bg-accent/15' : 'border-line/[0.08] hover:bg-line/[0.04]'
                       }`}
                     >
                       {d.dia !== null && (

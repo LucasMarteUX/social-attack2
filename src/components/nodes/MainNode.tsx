@@ -186,7 +186,7 @@ export default function MainNode({ data }: Props) {
 
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-line/[0.08] bg-surface-2 rounded-t-2xl">
-        <div className="w-7 h-7 rounded-lg bg-accent text-bg flex items-center justify-center shrink-0">
+        <div className="w-7 h-7 rounded-lg bg-accent text-white flex items-center justify-center shrink-0">
           <Sparkles size={14} />
         </div>
         <div>

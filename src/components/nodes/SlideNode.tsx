@@ -282,7 +282,7 @@ export default function SlideNode({ data }: Props) {
                       <button
                         type="button"
                         onClick={() => void onUsarVarianteImagem?.(slide.id, v)}
-                        className="flex-1 py-0.5 rounded text-[9px] font-semibold bg-accent text-bg hover:opacity-90 transition-colors"
+                        className="flex-1 py-0.5 rounded text-[9px] font-semibold bg-accent text-white hover:opacity-90 transition-colors"
                       >
                         Usar
                       </button>

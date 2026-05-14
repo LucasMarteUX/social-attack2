@@ -25,7 +25,7 @@ const variantClasses: Record<Variant, string> = {
     'bg-red-600 text-white hover:bg-red-700 disabled:opacity-40',
   // Acento monocromático (contraste com bg — espelho dark/light)
   accent:
-    'bg-accent text-bg hover:bg-accent-strong disabled:opacity-40',
+    'bg-accent text-white hover:bg-accent-strong disabled:opacity-40',
 }
 
 const sizeClasses: Record<Size, string> = {
