@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import { RotateCcw, Wand2, Upload, Trash2, ChevronLeft, ChevronRight, Image } from 'lucide-react'
 import Badge from '../ui/Badge'
@@ -36,12 +36,18 @@ export default function SlideNode({ data }: Props) {
   const { slide, styles, totalSlides, imageGenerating, onEditarTexto, onResetarTexto, onAbrirRegenerar, onAbrirGerarImagem, onUploadImagem, onRemoverImagem, onNavegar } = data
   const [editandoCampo, setEditandoCampo] = useState<string | null>(null)
   const [valorTemp, setValorTemp] = useState('')
+  const [arteImgErro, setArteImgErro] = useState(false)
+
+  useEffect(() => {
+    setArteImgErro(false)
+  }, [slide.image_url])
 
   const s = styles ?? DSS
   const isCTA = slide.slide_type === 'cta'
   const slideBg = isCTA ? s.ctaBackgroundColor : s.backgroundColor
   const pad = Math.max(8, Math.round(s.padding * 0.35))
   const arteEhPostCompleto = Boolean(slide.image_url && slide.image_is_full_composition)
+  const mostrarTipografiaSobreArte = !arteEhPostCompleto || arteImgErro
 
   function iniciarEdicao(campo: string, valorAtual: string) {
     setEditandoCampo(campo)
@@ -90,14 +96,19 @@ export default function SlideNode({ data }: Props) {
           style={{ aspectRatio: '4/5', backgroundColor: slideBg, border: `1.5px solid ${s.primaryColor}20` }}
         >
           {slide.image_url && (
-            <img src={slide.image_url} alt="" className="w-full h-full object-cover absolute inset-0" />
+            <img
+              src={slide.image_url}
+              alt=""
+              className="w-full h-full object-cover absolute inset-0"
+              onError={() => setArteImgErro(true)}
+            />
           )}
-          {imageGenerating && !slide.image_url && (
-            <div className="absolute inset-0 flex items-center justify-center bg-neutral-50/80">
+          {imageGenerating && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60">
               <Spinner size="sm" />
             </div>
           )}
-          {!arteEhPostCompleto && (
+          {mostrarTipografiaSobreArte ? (
           <div
             className="absolute inset-0 flex flex-col justify-center gap-1 pointer-events-none"
             style={{
@@ -144,7 +155,7 @@ export default function SlideNode({ data }: Props) {
               </span>
             )}
           </div>
-          )}
+          ) : null}
         </div>
 
         {/* Campos editáveis */}

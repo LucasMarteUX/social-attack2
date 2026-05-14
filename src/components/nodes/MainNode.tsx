@@ -52,6 +52,7 @@ export default function MainNode({ data }: Props) {
   }
 
   async function handleGerar() {
+    if (generating) return
     if (!titulo.trim()) { setErro('Título obrigatório.'); return }
     setErro(null)
     const tom = tons.find((t) => t.id === tomId)

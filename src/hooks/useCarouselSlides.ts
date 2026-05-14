@@ -95,7 +95,7 @@ export function useCarouselSlides(carouselId: string) {
     imageSource: CarouselSlide['image_source'],
     prompt?: string,
     imageIsFullComposition?: boolean
-  ) {
+  ): Promise<CarouselSlide | null> {
     const actionType: SlideActionType = imageUrl === null
       ? 'image_removed'
       : imageSource === 'uploaded'
@@ -120,8 +120,10 @@ export function useCarouselSlides(carouselId: string) {
       .single()
     if (error) throw new Error(error.message)
 
-    setSlides((prev) => prev.map((s) => (s.id === slideId ? (data as CarouselSlide) : s)))
+    const updated = data as CarouselSlide
+    setSlides((prev) => prev.map((s) => (s.id === slideId ? updated : s)))
     await registrarHistorico(slideId, actionType, 'image_url', null, imageUrl, prompt)
+    return updated
   }
 
   async function atualizarTextoRegenerado(

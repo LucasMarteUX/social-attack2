@@ -6,8 +6,10 @@ const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string
 // gemini-2.5-flash: modelo estável para geração de texto (substitui gemini-2.0-flash)
 const GEMINI_TEXT_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
 
-// imagen-4.0-generate-001: modelo atual para geração de imagens (substitui imagen-3.0-generate-002)
-const GEMINI_IMAGE_URL = `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict`
+const GEMINI_IMAGE_PREDICT = 'https://generativelanguage.googleapis.com/v1beta/models'
+
+/** Ordem: tenta o modelo mais novo e faz fallback se o projeto não tiver acesso. */
+const IMAGEN_MODEL_IDS = ['imagen-4.0-generate-001', 'imagen-3.0-generate-002'] as const
 
 export interface IdeaSuggestion {
   titulo: string
@@ -298,13 +300,43 @@ Gere apenas o novo texto para o campo "${campo}". Responda SOMENTE com o texto, 
   return callGemini(prompt, false)
 }
 
-/** Imagen não expõe 4:5 na API; 3:4 é o retrato mais próximo para feed. */
-export async function generateSlideImage(
+function extractImagenBase64(data: unknown): string | null {
+  const walk = (obj: unknown): string | null => {
+    if (!obj || typeof obj !== 'object') return null
+    const o = obj as Record<string, unknown>
+    const b64 =
+      typeof o.bytesBase64Encoded === 'string'
+        ? o.bytesBase64Encoded
+        : typeof o.bytes_base64_encoded === 'string'
+          ? o.bytes_base64_encoded
+          : null
+    if (b64 && b64.length > 80) return b64
+    for (const v of Object.values(o)) {
+      if (Array.isArray(v)) {
+        for (const item of v) {
+          const found = walk(item)
+          if (found) return found
+        }
+      } else if (v && typeof v === 'object') {
+        const found = walk(v)
+        if (found) return found
+      }
+    }
+    return null
+  }
+  return walk(data)
+}
+
+async function predictImagenModel(
+  modelId: string,
   prompt: string,
-  aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' = '3:4'
+  aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9',
+  signal: AbortSignal
 ): Promise<string> {
-  const response = await fetch(GEMINI_IMAGE_URL, {
+  const url = `${GEMINI_IMAGE_PREDICT}/${modelId}:predict?key=${encodeURIComponent(GEMINI_API_KEY)}`
+  const response = await fetch(url, {
     method: 'POST',
+    signal,
     headers: {
       'Content-Type': 'application/json',
       'x-goog-api-key': GEMINI_API_KEY,
@@ -315,13 +347,54 @@ export async function generateSlideImage(
     }),
   })
 
-  if (!response.ok) throw new Error(`Gemini API error: ${response.status}`)
+  const rawText = await response.text()
+  let data: unknown
+  try {
+    data = JSON.parse(rawText) as unknown
+  } catch {
+    data = null
+  }
 
-  const data = await response.json()
-  const base64 = data.predictions?.[0]?.bytesBase64Encoded
-  if (!base64) throw new Error('Nenhuma imagem retornada pelo Gemini')
+  if (!response.ok) {
+    const detail =
+      data && typeof data === 'object' && 'error' in data
+        ? JSON.stringify((data as { error?: unknown }).error)
+        : rawText.slice(0, 400)
+    throw new Error(`Imagen (${modelId}) ${response.status}: ${detail}`)
+  }
+
+  const base64 = extractImagenBase64(data)
+  if (!base64) throw new Error(`Imagen (${modelId}): resposta sem imagem em base64`)
 
   return `data:image/png;base64,${base64}`
+}
+
+/** Imagen não expõe 4:5 na API; 3:4 é o retrato mais próximo para feed. */
+export async function generateSlideImage(
+  prompt: string,
+  aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' = '3:4'
+): Promise<string> {
+  if (!GEMINI_API_KEY?.trim()) {
+    throw new Error('Chave Gemini ausente: defina VITE_GEMINI_API_KEY')
+  }
+
+  const controller = new AbortController()
+  const timeoutMs = 120_000
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  let lastErr: Error | null = null
+  try {
+    for (const modelId of IMAGEN_MODEL_IDS) {
+      try {
+        return await predictImagenModel(modelId, prompt, aspectRatio, controller.signal)
+      } catch (e) {
+        lastErr = e instanceof Error ? e : new Error(String(e))
+      }
+    }
+    throw lastErr ?? new Error('Nenhum modelo Imagen respondeu')
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 // Analisa imagens de referência do design system com visão do Gemini

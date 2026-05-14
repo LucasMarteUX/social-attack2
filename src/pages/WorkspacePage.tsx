@@ -15,7 +15,7 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import MainNode, { type MainNodeData } from '../components/nodes/MainNode'
-import SlideNode from '../components/nodes/SlideNode'
+import SlideNode, { type SlideNodeData } from '../components/nodes/SlideNode'
 import RegenerateTextModal from '../components/modals/RegenerateTextModal'
 import GenerateImageModal from '../components/modals/GenerateImageModal'
 import Spinner from '../components/ui/Spinner'
@@ -76,6 +76,12 @@ export default function WorkspacePage() {
     throw new Error('Workspace ainda não está pronto.')
   })
   const [geracaoErro, setGeracaoErro] = useState<string | null>(null)
+  const [avisoImagens, setAvisoImagens] = useState<string | null>(null)
+  const geracaoLockRef = useRef(false)
+
+  useEffect(() => {
+    if (!isNew && id) setCarouselId(id)
+  }, [id, isNew])
 
   useEffect(() => {
     let cancelled = false
@@ -165,7 +171,10 @@ export default function WorkspacePage() {
     totalSlides: number
     autoGerarImagens: boolean
   }) {
+    if (geracaoLockRef.current) return
+    geracaoLockRef.current = true
     setGeracaoErro(null)
+    setAvisoImagens(null)
     setGenerating(true)
     setNodes((nds) => nds.map((n) => n.id === MAIN_NODE_ID ? { ...n, data: { ...n.data, gerating: true } } : n))
 
@@ -254,6 +263,7 @@ export default function WorkspacePage() {
       console.error(e)
       setGeracaoErro(e instanceof Error ? e.message : 'Não foi possível gerar o carrossel.')
     } finally {
+      geracaoLockRef.current = false
       setGenerating(false)
       setNodes((nds) => nds.map((n) => n.id === MAIN_NODE_ID ? { ...n, data: { ...n.data, gerating: false } } : n))
     }
@@ -270,8 +280,10 @@ export default function WorkspacePage() {
       n.id.startsWith('slide-') ? { ...n, data: { ...n.data, imageGenerating: true } } : n
     ))
 
+    let falhas = 0
     await Promise.allSettled(
       slidesList.map(async (slide) => {
+        let atualizado: CarouselSlide | null = null
         try {
           const dataUrl = await gerarSlideCompleto({
             slide: carouselSlideToNodeSlide(slide),
@@ -286,24 +298,45 @@ export default function WorkspacePage() {
             .upload(path, blob, { upsert: true, contentType: blob.type || 'image/png' })
           if (!error && storageData) {
             const { data: urlData } = supabase.storage.from('carousel-images').getPublicUrl(storageData.path)
-            await atualizarImagem(
+            atualizado = await atualizarImagem(
               slide.id,
               urlData.publicUrl,
               'generated',
               'Post completo (texto + layout via IA)',
               true
             )
+          } else {
+            if (error) console.error('Upload arte:', error.message)
+            falhas++
           }
-        } catch {
-          /* falha silenciosa por slide */
+        } catch (e) {
+          console.error('Geração arte slide', slide.slide_number, e)
+          falhas++
         } finally {
-          setNodes((nds) => nds.map((n) =>
-            n.id === `slide-${slide.id}` ? { ...n, data: { ...n.data, imageGenerating: false } } : n
-          ))
-          refreshSlideNode(slide.id)
+          setNodes((nds) =>
+            nds.map((n) => {
+              if (n.id !== `slide-${slide.id}`) return n
+              const d = n.data as unknown as SlideNodeData
+              return {
+                ...n,
+                data: {
+                  ...d,
+                  imageGenerating: false,
+                  ...(atualizado ? { slide: atualizado } : {}),
+                },
+              }
+            })
+          )
+          if (!atualizado) refreshSlideNode(slide.id)
         }
       })
     )
+
+    if (falhas > 0) {
+      setAvisoImagens(
+        `${falhas} slide(s) sem imagem gerada (Imagen ou Storage). Verifique VITE_GEMINI_API_KEY, faturamento na Google AI e políticas do bucket carousel-images.`
+      )
+    }
   }
 
   function dataURLtoBlob(dataUrl: string): Blob {
@@ -427,6 +460,19 @@ export default function WorkspacePage() {
 
   return (
     <div className="w-full h-[calc(100vh-64px)] relative">
+
+      {avisoImagens && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] max-w-lg w-[calc(100%-2rem)] rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-md flex gap-3 items-start">
+          <p className="text-[12px] text-amber-950 leading-snug flex-1">{avisoImagens}</p>
+          <button
+            type="button"
+            onClick={() => setAvisoImagens(null)}
+            className="text-[11px] font-semibold text-amber-800 hover:text-amber-950 shrink-0"
+          >
+            Fechar
+          </button>
+        </div>
+      )}
 
       {/* Barra de info para workspace existente */}
       {!isNew && (
