@@ -13,7 +13,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 const { data, error } = await supabase.auth.signUp({
   email: 'lucasmarteux@gmail.com',
-  password: '1234',
+  password: '123456',
 })
 
 if (error) {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Handle, Position } from '@xyflow/react'
-import { RotateCcw, Wand2, Upload, Trash2, ChevronLeft, ChevronRight, Image } from 'lucide-react'
+import { RotateCcw, Wand2, Upload, Trash2, ChevronLeft, ChevronRight, Image, Download } from 'lucide-react'
 import Badge from '../ui/Badge'
 import Spinner from '../ui/Spinner'
 import type { CarouselSlide, SlideStyles } from '../../data/mock'
@@ -228,15 +228,27 @@ export default function SlideNode({ data }: Props) {
             )}
           </div>
           {slide.image_url && (
-            <div className="flex items-center gap-1.5 text-[10px] text-neutral-400">
-              <Image size={10} />
-              <span>
-                {slide.image_source === 'generated'
-                  ? slide.image_is_full_composition
-                    ? 'IA — post completo'
-                    : 'Gerada por IA'
-                  : 'Upload'}
-              </span>
+            <div className="flex items-center justify-between gap-1.5 text-[10px] text-neutral-400">
+              <div className="flex items-center gap-1.5">
+                <Image size={10} />
+                <span>
+                  {slide.image_source === 'generated'
+                    ? slide.image_is_full_composition
+                      ? 'IA — post completo'
+                      : 'Gerada por IA'
+                    : 'Upload'}
+                </span>
+              </div>
+              <a
+                href={slide.image_url}
+                download={`slide-${slide.slide_number}.jpg`}
+                target="_blank"
+                rel="noreferrer"
+                title="Baixar imagem"
+                className="flex items-center gap-0.5 text-[10px] font-medium text-neutral-500 hover:text-purple-700 transition-colors"
+              >
+                <Download size={11} /> Baixar
+              </a>
             </div>
           )}
           {pendingImageVariants.length > 0 && (
