@@ -18,15 +18,15 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | null>(null)
 
 const ICONS: Record<ToastType, ReactNode> = {
-  success: <CheckCircle2 size={16} className="text-green-600" />,
-  error: <AlertCircle size={16} className="text-red-600" />,
-  info: <Info size={16} className="text-purple-600" />,
+  success: <CheckCircle2 size={16} className="text-green-600 dark:text-green-400 shrink-0" />,
+  error: <AlertCircle size={16} className="text-red-600 dark:text-red-400 shrink-0" />,
+  info: <Info size={16} className="text-accent shrink-0" />,
 }
 
 const STYLES: Record<ToastType, string> = {
-  success: 'border-green-100 bg-white',
-  error: 'border-red-100 bg-white',
-  info: 'border-purple-100 bg-white',
+  success: 'border-green-500/20 bg-surface-2',
+  error: 'border-red-500/20 bg-surface-2',
+  info: 'border-accent/25 bg-surface-2',
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -36,11 +36,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((p) => p.filter((t) => t.id !== id))
   }, [])
 
-  const add = useCallback((message: string, type: ToastType) => {
-    const id = `${Date.now()}-${Math.random()}`
-    setToasts((p) => [...p, { id, message, type }])
-    setTimeout(() => remove(id), 4000)
-  }, [remove])
+  const add = useCallback(
+    (message: string, type: ToastType) => {
+      const id = `${Date.now()}-${Math.random()}`
+      setToasts((p) => [...p, { id, message, type }])
+      setTimeout(() => remove(id), 4000)
+    },
+    [remove]
+  )
 
   const value: ToastContextValue = {
     success: (msg) => add(msg, 'success'),
@@ -55,13 +58,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl border ${STYLES[t.type]} min-w-[260px] max-w-sm animate-slide-up`}
+            className={`pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl border border-line/[0.08] ${STYLES[t.type]} min-w-[260px] max-w-sm animate-slide-up`}
           >
             {ICONS[t.type]}
-            <p className="text-body-md font-medium text-neutral-800 flex-1">{t.message}</p>
+            <p className="text-body-md font-medium text-ink flex-1">{t.message}</p>
             <button
+              type="button"
               onClick={() => remove(t.id)}
-              className="text-neutral-400 hover:text-neutral-600 transition-colors flex-shrink-0"
+              className="text-ink-faint hover:text-ink transition-colors shrink-0 rounded-lg p-0.5 hover:bg-line/[0.08]"
+              aria-label="Fechar"
             >
               <X size={14} />
             </button>

@@ -1,6 +1,6 @@
 import { type ButtonHTMLAttributes, type ReactNode } from 'react'
 
-type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive' | 'soft'
+type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive' | 'soft' | 'accent'
 type Size = 'sm' | 'md' | 'lg'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -8,19 +8,24 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: Size
   children: ReactNode
   loading?: boolean
+  className?: string
 }
 
 const variantClasses: Record<Variant, string> = {
+  // Monocromático — invertido pelo tema (branco em dark, preto em light)
   primary:
-    'bg-purple-700 text-white shadow-brand hover:bg-purple-800 disabled:opacity-50',
+    'bg-ink text-bg hover:bg-ink/90 disabled:opacity-40',
   secondary:
-    'bg-white text-neutral-700 border border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50 disabled:opacity-50',
+    'bg-surface border border-line/[0.1] text-ink hover:bg-surface-2 hover:border-line/[0.18] disabled:opacity-40',
   soft:
-    'bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-50',
+    'bg-line/[0.06] text-ink hover:bg-line/[0.1] disabled:opacity-40',
   ghost:
-    'bg-transparent text-neutral-600 hover:bg-neutral-100 disabled:opacity-50',
+    'bg-transparent text-ink-muted hover:text-ink hover:bg-line/[0.06] disabled:opacity-40',
   destructive:
-    'bg-red-600 text-white hover:bg-red-700 disabled:opacity-50',
+    'bg-red-600 text-white hover:bg-red-700 disabled:opacity-40',
+  // Acento pink — reservado para CTAs de IA
+  accent:
+    'bg-accent text-white hover:bg-accent-strong disabled:opacity-40',
 }
 
 const sizeClasses: Record<Size, string> = {
@@ -42,12 +47,12 @@ export default function Button({
   return (
     <button
       type={type}
-      className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold tracking-tight transition-all cursor-pointer ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl font-semibold tracking-tight transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-offset-2 focus-visible:ring-offset-bg ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
       disabled={disabled || loading}
       {...props}
     >
       {loading && (
-        <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        <span className="w-4 h-4 border-2 border-current/30 border-t-current rounded-full animate-spin" />
       )}
       {children}
     </button>

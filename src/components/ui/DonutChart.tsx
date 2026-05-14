@@ -26,11 +26,11 @@ export default function DonutChart({
   if (total === 0) {
     return (
       <div
-        className={`relative rounded-full ${className}`}
-        style={{ width: size, height: size, background: '#F4F4F4' }}
+        className={`relative rounded-full bg-surface-3 ${className}`}
+        style={{ width: size, height: size }}
       >
         <div
-          className="absolute rounded-full bg-white flex items-center justify-center"
+          className="absolute rounded-full bg-bg flex items-center justify-center"
           style={{ inset: thickness }}
         >
           {centerLabel}
@@ -50,16 +50,13 @@ export default function DonutChart({
     .join(', ')
 
   return (
-    <div
-      className={`relative ${className}`}
-      style={{ width: size, height: size }}
-    >
+    <div className={`relative ${className}`} style={{ width: size, height: size }}>
       <div
         className="absolute inset-0 rounded-full"
         style={{ background: `conic-gradient(${stops})` }}
       />
       <div
-        className="absolute rounded-full bg-white flex items-center justify-center"
+        className="absolute rounded-full bg-bg flex items-center justify-center"
         style={{ inset: thickness }}
       >
         {centerLabel}

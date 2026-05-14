@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react'
 
-type Variant = 'default' | 'elevated' | 'muted' | 'lavender' | 'beet'
+type Variant = 'default' | 'elevated' | 'muted' | 'accent' | 'ghost'
 
 interface CardProps {
   variant?: Variant
@@ -10,11 +10,11 @@ interface CardProps {
 }
 
 const variantClasses: Record<Variant, string> = {
-  default: 'bg-white border border-black/[0.06] shadow-sm',
-  elevated: 'bg-white shadow-md',
-  muted: 'bg-neutral-50 border border-neutral-100',
-  lavender: 'bg-purple-50',
-  beet: 'bg-pink-50',
+  default:  'bg-surface border border-line/[0.08]',
+  elevated: 'bg-surface-2 border border-line/[0.08]',
+  muted:    'bg-surface-2',
+  accent:   'bg-accent/[0.06] border border-accent/[0.18]',
+  ghost:    'bg-transparent border border-line/[0.08]',
 }
 
 export default function Card({
@@ -25,7 +25,7 @@ export default function Card({
 }: CardProps) {
   return (
     <div
-      className={`rounded-xl p-5 ${variantClasses[variant]} ${onClick ? 'cursor-pointer hover:shadow-md transition-shadow' : ''} ${className}`}
+      className={`rounded-2xl p-5 ${variantClasses[variant]} ${onClick ? 'cursor-pointer hover:border-line/[0.18] transition-colors' : ''} ${className}`}
       onClick={onClick}
     >
       {children}

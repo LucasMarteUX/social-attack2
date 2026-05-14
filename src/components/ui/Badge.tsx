@@ -8,23 +8,30 @@ interface BadgeProps {
 }
 
 const variantClasses: Record<Variant, string> = {
-  success: 'bg-green-50 text-green-700',
-  warning: 'bg-teal-50 text-teal-700',
-  alert: 'bg-coral-50 text-coral-800',
-  critical: 'bg-red-50 text-red-700',
-  neutral: 'bg-neutral-100 text-neutral-600',
-  lavender: 'bg-purple-50 text-purple-700',
-  cyan: 'bg-teal-50 text-teal-700',
+  success:
+    'border border-green-500/25 bg-green-500/[0.1] text-green-800 dark:text-green-400',
+  warning:
+    'border border-teal-500/25 bg-teal-500/[0.12] text-teal-900 dark:text-teal-300',
+  alert:
+    'border border-coral-500/25 bg-coral-500/[0.12] text-coral-900 dark:text-coral-300',
+  critical:
+    'border border-red-500/25 bg-red-500/[0.1] text-red-800 dark:text-red-400',
+  neutral:
+    'border border-line/[0.12] bg-line/[0.06] text-ink-muted',
+  lavender:
+    'border border-purple-500/25 bg-purple-500/[0.1] text-purple-900 dark:text-purple-300',
+  cyan:
+    'border border-teal-500/25 bg-teal-500/[0.12] text-teal-900 dark:text-teal-300',
 }
 
 const dotColors: Record<Variant, string> = {
-  success: 'bg-green-600',
-  warning: 'bg-teal-600',
-  alert: 'bg-coral-700',
-  critical: 'bg-red-600',
-  neutral: 'bg-neutral-400',
-  lavender: 'bg-purple-600',
-  cyan: 'bg-teal-600',
+  success: 'bg-green-600 dark:bg-green-400',
+  warning: 'bg-teal-600 dark:bg-teal-400',
+  alert: 'bg-coral-600 dark:bg-coral-400',
+  critical: 'bg-red-600 dark:bg-red-400',
+  neutral: 'bg-ink-faint',
+  lavender: 'bg-purple-600 dark:bg-purple-400',
+  cyan: 'bg-teal-600 dark:bg-teal-400',
 }
 
 export default function Badge({
@@ -35,9 +42,9 @@ export default function Badge({
 }: BadgeProps) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold tracking-tight ${variantClasses[variant]} ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-semibold tracking-tight ${variantClasses[variant]} ${className}`}
     >
-      {dot && <span className={`w-1.5 h-1.5 rounded-full ${dotColors[variant]}`} />}
+      {dot && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColors[variant]}`} />}
       {children}
     </span>
   )
