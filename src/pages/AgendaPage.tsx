@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, CalendarDays, List, Instagram, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, List, Instagram, Plus, Workflow } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Badge from '../components/ui/Badge'
 import SectionHeader from '../components/ui/SectionHeader'
 import { useAgenda } from '../hooks/useAgenda'
+import { useCarousels } from '../hooks/useCarousels'
 
 type View = 'calendario' | 'lista'
 
@@ -30,6 +31,7 @@ const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 export default function AgendaPage() {
   const navigate = useNavigate()
   const { agendamentos, getCriativo, getCategoriaByCriativo } = useAgenda()
+  const { carousels } = useCarousels()
 
   const [view, setView] = useState<View>('calendario')
   const [mesAtual, setMesAtual] = useState(() => {
@@ -247,15 +249,23 @@ export default function AgendaPage() {
           ) : (
             <div className="flex flex-col gap-3 mt-2">
               {agendamentosOrdenados.map((a) => {
-                const cri = getCriativo(a.criativo_id)
-                const cat = getCategoriaByCriativo(a.criativo_id)
+                const isCarousel = !!a.carousel_id
+                const carousel = isCarousel ? carousels.find((c) => c.id === a.carousel_id) : null
+                const cri = !isCarousel && a.criativo_id ? getCriativo(a.criativo_id) : null
+                const cat = !isCarousel && a.criativo_id ? getCategoriaByCriativo(a.criativo_id) : null
+                const titulo = isCarousel
+                  ? (carousel?.title ?? 'Workspace removido')
+                  : (cri?.titulo ?? 'Criativo removido')
                 const data = new Date(a.data_publicacao)
                 const variant = STATUS_VARIANT[a.status] ?? 'neutral'
 
                 return (
                   <div
                     key={a.id}
-                    onClick={() => cri && navigate(`/criativos/${cri.id}`)}
+                    onClick={() => {
+                      if (isCarousel && carousel) navigate(`/workspace/${carousel.id}`)
+                      else if (cri) navigate(`/criativos/${cri.id}`)
+                    }}
                     className="flex items-center gap-4 p-4 rounded-2xl border border-neutral-100 hover:bg-neutral-50 cursor-pointer transition-colors"
                   >
                     <div className="flex flex-col items-center justify-center w-14 h-16 rounded-2xl bg-neutral-50 border border-neutral-100 flex-shrink-0">
@@ -268,17 +278,18 @@ export default function AgendaPage() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <p className="text-body-md font-semibold text-neutral-900 truncate">
-                        {cri?.titulo ?? 'Criativo removido'}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        {isCarousel && <Workflow size={13} className="text-purple-500 flex-shrink-0" />}
+                        <p className="text-body-md font-semibold text-neutral-900 truncate">{titulo}</p>
+                      </div>
                       <div className="flex items-center gap-2 mt-1 flex-wrap">
                         {cat && (
                           <div className="flex items-center gap-1.5">
                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.cor }} />
                             <span className="text-label text-neutral-500">{cat.nome}</span>
+                            <span className="text-neutral-300">·</span>
                           </div>
                         )}
-                        <span className="text-neutral-300">·</span>
                         <span className="text-label text-neutral-500 flex items-center gap-1">
                           <Instagram size={11} />
                           {a.plataforma}

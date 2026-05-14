@@ -48,7 +48,8 @@ export interface Criativo {
 
 export interface Agendamento {
   id: string
-  criativo_id: string
+  criativo_id: string | null
+  carousel_id?: string | null
   data_publicacao: string
   plataforma: 'instagram' | 'linkedin' | 'twitter'
   status: 'agendado' | 'publicado' | 'cancelado'

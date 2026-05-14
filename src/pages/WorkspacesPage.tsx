@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, ExternalLink, Copy, Trash2, Pencil, Workflow, Clock } from 'lucide-react'
+import { Plus, ExternalLink, Copy, Trash2, Pencil, Workflow, Clock, CalendarPlus } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Spinner from '../components/ui/Spinner'
 import Modal from '../components/ui/Modal'
 import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
 import { useCarousels } from '../hooks/useCarousels'
+import { useAgenda } from '../hooks/useAgenda'
 import { supabase } from '../lib/supabase'
 import type { Carousel } from '../data/mock'
 
@@ -30,11 +31,43 @@ function formatDate(iso: string) {
 export default function WorkspacesPage() {
   const navigate = useNavigate()
   const { carousels, loading, excluir, editar, recarregar } = useCarousels()
+  const { criar: criarAgendamento } = useAgenda()
 
   const [editando, setEditando] = useState<Carousel | null>(null)
   const [tituloEdit, setTituloEdit] = useState('')
   const [excluindo, setExcluindo] = useState<Carousel | null>(null)
   const [duplicandoId, setDuplicandoId] = useState<string | null>(null)
+  const [agendando, setAgendando] = useState<Carousel | null>(null)
+  const [agData, setAgData] = useState('')
+  const [agHora, setAgHora] = useState('09:00')
+  const [agPlataforma, setAgPlataforma] = useState<'instagram' | 'linkedin' | 'twitter'>('instagram')
+  const [agNotas, setAgNotas] = useState('')
+  const [agSalvando, setAgSalvando] = useState(false)
+
+  async function handleAgendar() {
+    if (!agendando || !agData) return
+    setAgSalvando(true)
+    try {
+      const dataPublicacao = new Date(`${agData}T${agHora}:00`).toISOString()
+      await criarAgendamento({
+        criativo_id: null,
+        carousel_id: agendando.id,
+        data_publicacao: dataPublicacao,
+        plataforma: agPlataforma,
+        status: 'agendado',
+        notas: agNotas.trim(),
+      })
+      setAgendando(null)
+      setAgData('')
+      setAgHora('09:00')
+      setAgPlataforma('instagram')
+      setAgNotas('')
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setAgSalvando(false)
+    }
+  }
 
   async function duplicarWorkspace(carousel: Carousel) {
     setDuplicandoId(carousel.id)
@@ -115,6 +148,7 @@ export default function WorkspacesPage() {
               onEdit={() => { setEditando(c); setTituloEdit(c.title) }}
               onDuplicate={() => duplicarWorkspace(c)}
               onDelete={() => setExcluindo(c)}
+              onAgendar={() => { setAgendando(c); setAgData('') }}
             />
           ))}
         </div>
@@ -132,6 +166,63 @@ export default function WorkspacesPage() {
           <div className="flex gap-3 justify-end">
             <Button variant="ghost" onClick={() => setEditando(null)}>Cancelar</Button>
             <Button onClick={handleSalvarEdicao}>Salvar</Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal agendar */}
+      <Modal open={!!agendando} onClose={() => setAgendando(null)} title="Enviar para a Agenda">
+        <div className="flex flex-col gap-4">
+          <p className="text-[13px] text-neutral-500">
+            Agendando: <strong className="text-neutral-800">{agendando?.title}</strong>
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Data *</label>
+              <input
+                type="date"
+                value={agData}
+                onChange={(e) => setAgData(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Horário</label>
+              <input
+                type="time"
+                value={agHora}
+                onChange={(e) => setAgHora(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all"
+              />
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Plataforma</label>
+            <select
+              value={agPlataforma}
+              onChange={(e) => setAgPlataforma(e.target.value as typeof agPlataforma)}
+              className="px-3 py-2 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all bg-white"
+            >
+              <option value="instagram">Instagram</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="twitter">Twitter / X</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Notas (opcional)</label>
+            <textarea
+              value={agNotas}
+              onChange={(e) => setAgNotas(e.target.value)}
+              rows={2}
+              placeholder="Observações sobre a postagem..."
+              className="px-3 py-2 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all resize-none"
+            />
+          </div>
+          <div className="flex gap-3 justify-end">
+            <Button variant="ghost" onClick={() => setAgendando(null)}>Cancelar</Button>
+            <Button onClick={handleAgendar} disabled={!agData || agSalvando}>
+              {agSalvando ? 'Agendando…' : 'Agendar'}
+            </Button>
           </div>
         </div>
       </Modal>
@@ -164,9 +255,10 @@ interface CardProps {
   onEdit: () => void
   onDuplicate: () => void
   onDelete: () => void
+  onAgendar: () => void
 }
 
-function WorkspaceCard({ carousel, duplicating, onOpen, onEdit, onDuplicate, onDelete }: CardProps) {
+function WorkspaceCard({ carousel, duplicating, onOpen, onEdit, onDuplicate, onDelete, onAgendar }: CardProps) {
   const styles = carousel.styles
 
   return (
@@ -241,13 +333,23 @@ function WorkspaceCard({ carousel, duplicating, onOpen, onEdit, onDuplicate, onD
           </span>
         </div>
 
-        <button
-          onClick={onOpen}
-          className="mt-3 w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-purple-100 text-[12px] font-medium text-purple-700 hover:bg-purple-50 transition-colors"
-        >
-          <ExternalLink size={12} />
-          Abrir workspace
-        </button>
+        <div className="mt-3 flex gap-2">
+          <button
+            onClick={onOpen}
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-purple-100 text-[12px] font-medium text-purple-700 hover:bg-purple-50 transition-colors"
+          >
+            <ExternalLink size={12} />
+            Abrir
+          </button>
+          <button
+            onClick={onAgendar}
+            title="Enviar para a Agenda"
+            className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 text-[12px] font-medium text-neutral-600 hover:border-purple-200 hover:text-purple-700 hover:bg-purple-50 transition-colors"
+          >
+            <CalendarPlus size={12} />
+            Agendar
+          </button>
+        </div>
       </div>
     </div>
   )
