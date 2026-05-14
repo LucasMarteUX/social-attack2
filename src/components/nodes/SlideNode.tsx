@@ -32,8 +32,8 @@ export default function SlideNode({ data }: Props) {
   const [editandoCampo, setEditandoCampo] = useState<string | null>(null)
   const [valorTemp, setValorTemp] = useState('')
 
-  const bg = designSystem?.global_background_color ?? '#FFFFFF'
-  const accent = designSystem?.global_accent_color ?? '#6D28D9'
+  const bg = '#FFFFFF'
+  const accent = '#6D28D9'
 
   function iniciarEdicao(campo: string, valorAtual: string) {
     setEditandoCampo(campo)
@@ -79,7 +79,7 @@ export default function SlideNode({ data }: Props) {
         {/* Preview miniatura 4:5 */}
         <div
           className="w-full rounded-lg overflow-hidden relative"
-          style={{ aspectRatio: '4/5', backgroundColor: slide.slide_type === 'cta' ? (designSystem?.cta_background_color ?? accent) : bg, border: `1.5px solid ${accent}20` }}
+          style={{ aspectRatio: '4/5', backgroundColor: slide.slide_type === 'cta' ? accent : bg, border: `1.5px solid ${accent}20` }}
         >
           {slide.image_url ? (
             <img src={slide.image_url} alt="" className="w-full h-full object-cover absolute inset-0" />
@@ -88,18 +88,18 @@ export default function SlideNode({ data }: Props) {
             {slide.slide_type === 'cover' && (
               <>
                 {slide.tag_text && <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: accent }}>{slide.tag_text}</span>}
-                {slide.headline && <span className="text-[13px] font-black leading-tight" style={{ color: slide.slide_type === 'cta' ? (designSystem?.cta_text_color ?? '#FFF') : '#111' }}>{slide.headline}</span>}
-                {slide.subheadline && <span className="text-[9px]" style={{ color: designSystem?.cover_subheadline_color ?? '#666' }}>{slide.subheadline}</span>}
+                {slide.headline && <span className="text-[13px] font-black leading-tight" style={{ color: '#111' }}>{slide.headline}</span>}
+                {slide.subheadline && <span className="text-[9px]" style={{ color: '#666' }}>{slide.subheadline}</span>}
               </>
             )}
             {slide.slide_type === 'body' && (
               <>
                 {slide.headline && <span className="text-[12px] font-bold leading-tight" style={{ color: '#111' }}>{slide.headline}</span>}
-                {slide.body_paragraph && <span className="text-[8px] leading-relaxed" style={{ color: designSystem?.body_paragraph_color ?? '#333' }}>{slide.body_paragraph}</span>}
+                {slide.body_paragraph && <span className="text-[8px] leading-relaxed" style={{ color: '#333' }}>{slide.body_paragraph}</span>}
               </>
             )}
             {slide.slide_type === 'cta' && slide.cta_message && (
-              <span className="text-[12px] font-black text-center leading-tight" style={{ color: designSystem?.cta_text_color ?? '#FFF' }}>{slide.cta_message}</span>
+              <span className="text-[12px] font-black text-center leading-tight" style={{ color: '#FFF' }}>{slide.cta_message}</span>
             )}
           </div>
         </div>

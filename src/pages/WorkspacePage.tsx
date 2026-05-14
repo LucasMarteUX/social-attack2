@@ -38,7 +38,7 @@ export default function WorkspacePage() {
   const [carouselId, setCarouselId] = useState<string | null>(null)
   const { slides, inserirSlides, editarTexto, resetarTexto, atualizarImagem, atualizarTextoRegenerado, buscarHistorico } = useCarouselSlides(carouselId ?? '')
 
-  const [generating, setGenerating] = useState(false)
+  const [, setGenerating] = useState(false)
 
   // Modal Regenerar Texto
   const [regenModal, setRegenModal] = useState<{ slideId: string; campo: string; textoAtual: string; slideType: string; historico: ReturnType<typeof buscarHistorico> extends Promise<infer T> ? T : never } | null>(null)
