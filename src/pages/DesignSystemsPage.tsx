@@ -12,13 +12,13 @@ async function uploadReferenciasDesignSystem(dsId: string, files: File[]): Promi
   const urls: string[] = []
   for (const file of files) {
     const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg'
-    const path = `design-systems/${dsId}/${crypto.randomUUID()}.${ext}`
-    const { data, error } = await supabase.storage.from('carousel-images').upload(path, file, {
+    const path = `${dsId}/${crypto.randomUUID()}.${ext}`
+    const { data, error } = await supabase.storage.from('design-system-references').upload(path, file, {
       upsert: true,
       contentType: file.type || 'image/jpeg',
     })
     if (error) throw new Error(error.message)
-    const { data: pub } = supabase.storage.from('carousel-images').getPublicUrl(data.path)
+    const { data: pub } = supabase.storage.from('design-system-references').getPublicUrl(data.path)
     urls.push(pub.publicUrl)
   }
   return urls
