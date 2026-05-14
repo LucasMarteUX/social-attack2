@@ -8,6 +8,7 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
+  useNodes,
   addEdge,
   type Node,
   type Edge,
@@ -43,10 +44,12 @@ import { DEFAULT_SLIDE_STYLES, PLACEHOLDER_TEXTO_SLIDE_GERANDO } from '../data/m
 const NODE_TYPES = { mainNode: MainNode, slideNode: SlideNode }
 
 const MAIN_NODE_ID = 'main'
-const MAIN_NODE_X = 0
+const MAIN_NODE_X = 0   // centro de referência horizontal
 const MAIN_NODE_Y = 0
-const SLIDE_OFFSET_Y = 480
-const SLIDE_GAP_X = 340
+const MAIN_NODE_WIDTH = 380
+const SLIDE_NODE_WIDTH = 300
+const SLIDE_OFFSET_Y = 920  // gap seguro acima dos slides (MainNode ~650px + folga)
+const SLIDE_GAP_X = 360     // largura do slide + margem lateral
 
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Rascunho',
@@ -97,6 +100,30 @@ function buildCarouselStubSlides(
 }
 
 type GerarParams = Parameters<MainNodeData['onGerar']>[0]
+
+// Renderizado dentro do SVG do MiniMap — usa useNodes para acessar image_url de cada slide
+function MiniMapNodePreview({ x, y, width, height, id }: { x: number; y: number; width: number; height: number; id: string }) {
+  const nodes = useNodes<Node>()
+  const node = nodes.find((n) => n.id === id)
+
+  if (node?.type === 'slideNode') {
+    const data = node.data as unknown as SlideNodeData
+    const imgUrl = data?.slide?.image_url
+    const bg = (data?.styles ?? DEFAULT_SLIDE_STYLES).backgroundColor
+    return (
+      <>
+        <rect x={x} y={y} width={width} height={height} fill={bg} rx={2} />
+        {imgUrl ? (
+          <image href={imgUrl} x={x} y={y} width={width} height={height} preserveAspectRatio="xMidYMid slice" />
+        ) : (
+          <rect x={x} y={y} width={width} height={height} fill={bg} stroke="#6D28D9" strokeWidth={1} rx={2} />
+        )}
+      </>
+    )
+  }
+
+  return <rect x={x} y={y} width={width} height={height} fill="#6D28D9" rx={3} />
+}
 
 export default function WorkspacePage() {
   const { id } = useParams<{ id: string }>()
@@ -230,7 +257,7 @@ export default function WorkspacePage() {
     isNew ? [{
       id: MAIN_NODE_ID,
       type: 'mainNode',
-      position: { x: MAIN_NODE_X, y: MAIN_NODE_Y },
+      position: { x: MAIN_NODE_X - MAIN_NODE_WIDTH / 2, y: MAIN_NODE_Y },
       data: buildMainNodeData() as unknown as Record<string, unknown>,
     }] : []
   )
@@ -604,13 +631,14 @@ export default function WorkspacePage() {
   }
 
   function renderizarSlideNodes(slidesList: CarouselSlide[], estilos: SlideStyles) {
-    const totalWidth = slidesList.length * SLIDE_GAP_X
-    const startX = MAIN_NODE_X - totalWidth / 2 + SLIDE_GAP_X / 2
+    // Centraliza slides sob o node principal
+    const totalSlidesWidth = slidesList.length * SLIDE_NODE_WIDTH + (slidesList.length - 1) * (SLIDE_GAP_X - SLIDE_NODE_WIDTH)
+    const startX = MAIN_NODE_X - totalSlidesWidth / 2
 
     const mainNode: Node = {
       id: MAIN_NODE_ID,
       type: 'mainNode',
-      position: { x: MAIN_NODE_X, y: MAIN_NODE_Y },
+      position: { x: MAIN_NODE_X - MAIN_NODE_WIDTH / 2, y: MAIN_NODE_Y },
       data: buildMainNodeData() as unknown as Record<string, unknown>,
     }
 
@@ -861,7 +889,11 @@ export default function WorkspacePage() {
       >
         <Background gap={20} size={1} color="#e5e7eb" />
         <Controls />
-        <MiniMap nodeColor="#6D28D9" maskColor="rgba(0,0,0,0.05)" />
+        <MiniMap
+          nodeComponent={MiniMapNodePreview}
+          maskColor="rgba(0,0,0,0.06)"
+          style={{ background: '#f5f3f0' }}
+        />
       </ReactFlow>
 
       {regenModal && (

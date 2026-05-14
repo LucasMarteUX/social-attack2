@@ -121,7 +121,7 @@ export default function SlideNode({ data }: Props) {
 
         {/* Preview miniatura 4:5 */}
         <div
-          className="w-full rounded-lg overflow-hidden relative"
+          className="w-full rounded-lg overflow-hidden relative group"
           style={{ aspectRatio: '4/5', backgroundColor: slideBg, border: `1.5px solid ${s.primaryColor}20` }}
         >
           {slide.image_url && (
@@ -131,6 +131,19 @@ export default function SlideNode({ data }: Props) {
               className="w-full h-full object-cover absolute inset-0"
               onError={() => setArteImgErro(true)}
             />
+          )}
+          {slide.image_url && !imageGenerating && (
+            <a
+              href={slide.image_url}
+              download={`slide-${slide.slide_number}.jpg`}
+              target="_blank"
+              rel="noreferrer"
+              title="Baixar imagem"
+              onClick={(e) => e.stopPropagation()}
+              className="absolute top-1.5 right-1.5 z-20 w-6 h-6 rounded-md bg-black/50 hover:bg-black/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+            >
+              <Download size={11} className="text-white" />
+            </a>
           )}
           {imageGenerating && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60">
@@ -228,27 +241,15 @@ export default function SlideNode({ data }: Props) {
             )}
           </div>
           {slide.image_url && (
-            <div className="flex items-center justify-between gap-1.5 text-[10px] text-neutral-400">
-              <div className="flex items-center gap-1.5">
-                <Image size={10} />
-                <span>
-                  {slide.image_source === 'generated'
-                    ? slide.image_is_full_composition
-                      ? 'IA — post completo'
-                      : 'Gerada por IA'
-                    : 'Upload'}
-                </span>
-              </div>
-              <a
-                href={slide.image_url}
-                download={`slide-${slide.slide_number}.jpg`}
-                target="_blank"
-                rel="noreferrer"
-                title="Baixar imagem"
-                className="flex items-center gap-0.5 text-[10px] font-medium text-neutral-500 hover:text-purple-700 transition-colors"
-              >
-                <Download size={11} /> Baixar
-              </a>
+            <div className="flex items-center gap-1.5 text-[10px] text-neutral-400">
+              <Image size={10} />
+              <span>
+                {slide.image_source === 'generated'
+                  ? slide.image_is_full_composition
+                    ? 'IA — post completo'
+                    : 'Gerada por IA'
+                  : 'Upload'}
+              </span>
             </div>
           )}
           {pendingImageVariants.length > 0 && (
