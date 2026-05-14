@@ -17,6 +17,7 @@ export interface MainNodeData {
     tomDescricao: string
     designSystemId: string
     designSystemMarkdown: string
+    designSystemReferenceUrls: string[]
     totalSlides: number
     autoGerarImagens: boolean
   }) => Promise<void>
@@ -64,6 +65,7 @@ export default function MainNode({ data }: Props) {
       tomDescricao: tom?.descricao ?? '',
       designSystemId,
       designSystemMarkdown: ds?.markdown ?? '',
+      designSystemReferenceUrls: ds?.reference_image_urls ?? [],
       totalSlides,
       autoGerarImagens,
     })

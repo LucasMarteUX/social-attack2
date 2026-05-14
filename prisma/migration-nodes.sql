@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS design_systems (
   name VARCHAR(100) NOT NULL,
   markdown TEXT NOT NULL DEFAULT '',
   is_active BOOLEAN DEFAULT true,
+  reference_image_urls TEXT[] DEFAULT '{}',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -52,6 +53,7 @@ CREATE TABLE IF NOT EXISTS carousel_slides (
   image_url TEXT,
   image_source VARCHAR(20) DEFAULT 'none',
   image_generation_prompt TEXT,
+  image_is_full_composition BOOLEAN DEFAULT false,
 
   is_text_edited BOOLEAN DEFAULT false,
   is_image_edited BOOLEAN DEFAULT false,

@@ -41,6 +41,7 @@ export default function SlideNode({ data }: Props) {
   const isCTA = slide.slide_type === 'cta'
   const slideBg = isCTA ? s.ctaBackgroundColor : s.backgroundColor
   const pad = Math.max(8, Math.round(s.padding * 0.35))
+  const arteEhPostCompleto = Boolean(slide.image_url && slide.image_is_full_composition)
 
   function iniciarEdicao(campo: string, valorAtual: string) {
     setEditandoCampo(campo)
@@ -96,8 +97,9 @@ export default function SlideNode({ data }: Props) {
               <Spinner size="sm" />
             </div>
           )}
+          {!arteEhPostCompleto && (
           <div
-            className="absolute inset-0 flex flex-col justify-center gap-1"
+            className="absolute inset-0 flex flex-col justify-center gap-1 pointer-events-none"
             style={{
               padding: `${pad}px`,
               textAlign: slide.slide_type === 'body' ? s.bodyTextAlign : s.coverTextAlign,
@@ -142,6 +144,7 @@ export default function SlideNode({ data }: Props) {
               </span>
             )}
           </div>
+          )}
         </div>
 
         {/* Campos editáveis */}
@@ -162,9 +165,9 @@ export default function SlideNode({ data }: Props) {
           <CampoTexto label="Mensagem CTA" campo="cta_message" valor={slide.cta_message} editando={editandoCampo} valorTemp={valorTemp} onIniciar={iniciarEdicao} onSalvar={salvarEdicao} onChange={setValorTemp} onRegenerar={() => onAbrirRegenerar(slide.id, 'cta_message', slide.cta_message ?? '')} />
         )}
 
-        {/* Imagem */}
+        {/* Arte */}
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">Imagem de fundo</span>
+          <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">Arte do slide</span>
           <div className="flex gap-1.5">
             <button onClick={() => onAbrirGerarImagem(slide.id)} className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md border border-purple-200 text-[11px] font-medium text-purple-700 hover:bg-purple-50 transition-colors">
               <Wand2 size={11} /> Gerar IA
@@ -182,7 +185,13 @@ export default function SlideNode({ data }: Props) {
           {slide.image_url && (
             <div className="flex items-center gap-1.5 text-[10px] text-neutral-400">
               <Image size={10} />
-              <span>{slide.image_source === 'generated' ? 'Gerada por IA' : 'Upload'}</span>
+              <span>
+                {slide.image_source === 'generated'
+                  ? slide.image_is_full_composition
+                    ? 'IA — post completo'
+                    : 'Gerada por IA'
+                  : 'Upload'}
+              </span>
             </div>
           )}
         </div>

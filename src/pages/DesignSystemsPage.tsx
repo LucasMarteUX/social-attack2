@@ -5,7 +5,24 @@ import Modal from '../components/ui/Modal'
 import Spinner from '../components/ui/Spinner'
 import DesignSystemModal from '../components/modals/DesignSystemModal'
 import { useDesignSystems } from '../hooks/useDesignSystems'
+import { supabase } from '../lib/supabase'
 import type { DesignSystem } from '../data/mock'
+
+async function uploadReferenciasDesignSystem(dsId: string, files: File[]): Promise<string[]> {
+  const urls: string[] = []
+  for (const file of files) {
+    const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg'
+    const path = `design-systems/${dsId}/${crypto.randomUUID()}.${ext}`
+    const { data, error } = await supabase.storage.from('carousel-images').upload(path, file, {
+      upsert: true,
+      contentType: file.type || 'image/jpeg',
+    })
+    if (error) throw new Error(error.message)
+    const { data: pub } = supabase.storage.from('carousel-images').getPublicUrl(data.path)
+    urls.push(pub.publicUrl)
+  }
+  return urls
+}
 
 export default function DesignSystemsPage() {
   const { designSystems, loading, criar, editar, duplicar, excluir } = useDesignSystems()
@@ -18,9 +35,25 @@ export default function DesignSystemsPage() {
     setModalOpen(true)
   }
 
-  async function handleSave(dados: Omit<DesignSystem, 'id' | 'created_at' | 'updated_at'>) {
-    if (editando) await editar(editando.id, dados)
-    else await criar(dados)
+  async function handleSave(
+    dados: Omit<DesignSystem, 'id' | 'created_at' | 'updated_at'>,
+    options?: { novosArquivosReferencia?: File[] }
+  ) {
+    const novosArquivos = options?.novosArquivosReferencia ?? []
+    if (editando) {
+      let urls = [...dados.reference_image_urls]
+      if (novosArquivos.length) {
+        const uploaded = await uploadReferenciasDesignSystem(editando.id, novosArquivos)
+        urls = [...urls, ...uploaded]
+      }
+      await editar(editando.id, { ...dados, reference_image_urls: urls })
+      return
+    }
+    const created = await criar({ ...dados, reference_image_urls: dados.reference_image_urls ?? [] })
+    if (novosArquivos.length) {
+      const uploaded = await uploadReferenciasDesignSystem(created.id, novosArquivos)
+      await editar(created.id, { reference_image_urls: [...(dados.reference_image_urls ?? []), ...uploaded] })
+    }
   }
 
   return (

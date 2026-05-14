@@ -111,6 +111,7 @@ export interface DesignSystem {
   name: string
   markdown: string
   is_active: boolean
+  reference_image_urls: string[]
   created_at: string
   updated_at: string
 }
@@ -153,6 +154,8 @@ export interface CarouselSlide {
   image_url: string | null
   image_source: ImageSource
   image_generation_prompt: string | null
+  /** Quando true, a imagem já contém layout + texto — não sobrepõe tipografia no preview */
+  image_is_full_composition: boolean
   is_text_edited: boolean
   is_image_edited: boolean
   regenerate_text_count: number

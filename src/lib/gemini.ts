@@ -1,3 +1,6 @@
+import type { CarouselSlide, SlideStyles } from '../data/mock'
+import { DEFAULT_SLIDE_STYLES } from '../data/mock'
+
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string
 
 // gemini-2.5-flash: modelo estável para geração de texto (substitui gemini-2.0-flash)
@@ -133,11 +136,26 @@ export interface NodeSlide {
   cta_message?: string
 }
 
-import type { SlideStyles } from '../data/mock'
-
 export interface NodeCarouselScript {
   styles: SlideStyles
   slides: NodeSlide[]
+}
+
+interface ParsedNodeCarouselJson {
+  styles?: Partial<SlideStyles>
+  slides: NodeSlide[]
+}
+
+export function carouselSlideToNodeSlide(s: CarouselSlide): NodeSlide {
+  return {
+    slide_number: s.slide_number,
+    slide_type: s.slide_type,
+    tag_text: s.tag_text ?? undefined,
+    headline: s.headline ?? undefined,
+    subheadline: s.subheadline ?? undefined,
+    body_paragraph: s.body_paragraph ?? undefined,
+    cta_message: s.cta_message ?? undefined,
+  }
 }
 
 export async function gerarRoteirosNodes(params: {
@@ -205,7 +223,12 @@ Formato obrigatório (preencha "styles" com os valores reais do design system ac
 }`
 
   const text = await callGemini(prompt, hasUrls)
-  return extrairJSON<NodeCarouselScript>(text, false)
+  const parsed = extrairJSON<ParsedNodeCarouselJson>(text, false)
+  const mergedStyles: SlideStyles = { ...DEFAULT_SLIDE_STYLES, ...(parsed.styles ?? {}) }
+  return {
+    styles: mergedStyles,
+    slides: parsed.slides,
+  }
 }
 
 export async function regenerarCampoSlide(params: {
@@ -227,9 +250,11 @@ Gere apenas o novo texto para o campo "${campo}". Responda SOMENTE com o texto, 
   return callGemini(prompt, false)
 }
 
-export async function generateSlideImage(slideText: string): Promise<string> {
-  const prompt = `${slideText}. Estilo: flat illustration, paleta pastel suave, sem texto na imagem, fundo limpo e minimalista. Proporção 1:1.`
-
+/** Imagen não expõe 4:5 na API; 3:4 é o retrato mais próximo para feed. */
+export async function generateSlideImage(
+  prompt: string,
+  aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' = '3:4'
+): Promise<string> {
   const response = await fetch(GEMINI_IMAGE_URL, {
     method: 'POST',
     headers: {
@@ -238,7 +263,7 @@ export async function generateSlideImage(slideText: string): Promise<string> {
     },
     body: JSON.stringify({
       instances: [{ prompt }],
-      parameters: { sampleCount: 1, aspectRatio: '1:1' },
+      parameters: { sampleCount: 1, aspectRatio },
     }),
   })
 
@@ -249,4 +274,122 @@ export async function generateSlideImage(slideText: string): Promise<string> {
   if (!base64) throw new Error('Nenhuma imagem retornada pelo Gemini')
 
   return `data:image/png;base64,${base64}`
+}
+
+// Analisa imagens de referência do design system com visão do Gemini
+// Retorna uma descrição textual do estilo visual para usar no prompt do Imagen
+export async function analisarReferenciasVisuais(imageUrls: string[]): Promise<string> {
+  if (!imageUrls.length) return ''
+
+  const imageParts = await Promise.allSettled(
+    imageUrls.slice(0, 4).map(async (url) => {
+      const res = await fetch(url)
+      const blob = await res.blob()
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const result = reader.result as string
+          resolve(result.split(',')[1])
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(blob)
+      })
+      return { inlineData: { mimeType: blob.type || 'image/jpeg', data: base64 } }
+    })
+  )
+
+  const validParts = imageParts
+    .filter((r): r is PromiseFulfilledResult<{ inlineData: { mimeType: string; data: string } }> => r.status === 'fulfilled')
+    .map((r) => r.value)
+
+  if (!validParts.length) return ''
+
+  const body = {
+    contents: [{
+      role: 'user',
+      parts: [
+        ...validParts,
+        {
+          text: 'Analise estas imagens apenas como referência de estilo visual para guiar um novo layout. Não copie logos, marcas, fotos identificáveis nem composições literais. Em até 100 palavras, descreva: paleta, hierarquia tipográfica, espaçamento, textura/fundo, mood e elementos decorativos genéricos — útil para um prompt de geração de imagem.',
+        },
+      ],
+    }],
+  }
+
+  const response = await fetch(GEMINI_TEXT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  if (!response.ok) return ''
+  const data = await response.json()
+  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+}
+
+// Gera o slide COMPLETO como imagem — texto + design + visual integrados
+// A imagem gerada é o próprio post, não apenas uma imagem de fundo
+export async function gerarSlideCompleto(params: {
+  slide: NodeSlide
+  styles: SlideStyles
+  designSystemMarkdown: string
+  referenceDescription: string
+}): Promise<string> {
+  const { slide, styles: s, designSystemMarkdown, referenceDescription } = params
+
+  const typeLabel = slide.slide_type === 'cover' ? 'Capa' : slide.slide_type === 'body' ? 'Conteúdo' : 'CTA'
+  const isCTA = slide.slide_type === 'cta'
+  const alignLabel = slide.slide_type === 'body' ? s.bodyTextAlign : s.coverTextAlign
+
+  const contentLines: string[] = []
+  if (slide.slide_type === 'cover') {
+    if (slide.tag_text) contentLines.push(`Tag (pequeno, uppercase, cor ${s.tagColor}): "${slide.tag_text}"`)
+    if (slide.headline) contentLines.push(`Headline principal (grande, bold, cor ${s.textColor}): "${slide.headline}"`)
+    if (slide.subheadline) contentLines.push(`Subheadline (menor, cor ${s.textColor} com 70% opacidade): "${slide.subheadline}"`)
+  } else if (slide.slide_type === 'body') {
+    if (slide.headline) contentLines.push(`Título (bold, cor ${s.textColor}): "${slide.headline}"`)
+    if (slide.body_paragraph) contentLines.push(`Parágrafo (regular, cor ${s.textColor}): "${slide.body_paragraph}"`)
+  } else if (slide.slide_type === 'cta') {
+    if (slide.cta_message) contentLines.push(`Mensagem CTA (grande, centralizada, cor ${s.ctaTextColor}): "${slide.cta_message}"`)
+  }
+
+  const layoutDesc = slide.slide_type === 'cover'
+    ? 'Slide de capa: composição visual marcante, headline em destaque, hierarquia tipográfica clara'
+    : slide.slide_type === 'body'
+    ? 'Slide de conteúdo: fundo limpo, texto bem espaçado, elemento gráfico complementar sutil'
+    : 'Slide CTA: fundo totalmente preenchido com cor de destaque, texto centralizado e impactante'
+
+  const dsNote = designSystemMarkdown.trim()
+    ? `\nDOCUMENTAÇÃO DO DESIGN SYSTEM (siga rigorosamente):\n${designSystemMarkdown}\n`
+    : ''
+
+  const refNote = referenceDescription.trim()
+    ? `\nESTILO DE REFERÊNCIA (inspire-se na estética geral; não reproduza logos, marcas nem layouts idênticos às imagens de referência):\n${referenceDescription}\n`
+    : ''
+
+  const ctaColors = isCTA
+    ? `- Fundo do slide: ${s.ctaBackgroundColor}\n- Cor do texto: ${s.ctaTextColor}`
+    : `- Fundo do slide: ${s.backgroundColor}\n- Cor do texto: ${s.textColor}`
+
+  const prompt = `Post profissional para Instagram carrossel. Proporção 4:5 (portrait), 1080x1350px. Slide ${slide.slide_number} de tipo "${typeLabel}".
+
+CORES:
+- Cor primária/destaque: ${s.primaryColor}
+${ctaColors}
+${dsNote}${refNote}
+TEXTOS QUE DEVEM APARECER NA IMAGEM (exatamente como especificado):
+${contentLines.join('\n') || 'Sem texto'}
+
+LAYOUT: ${layoutDesc}
+Alinhamento de texto: ${alignLabel}
+Padding interno: ${s.padding}px nas bordas
+
+REQUISITOS:
+- Design editorial de alto nível, moderno e profissional
+- Todos os textos acima DEVEM estar visíveis e legíveis na imagem
+- Tipografia limpa, hierarquia visual clara
+- Sem marcas d'água, sem logos externos, sem bordas desnecessárias
+- Estilo Instagram/LinkedIn carrossel profissional`
+
+  return generateSlideImage(prompt)
 }

@@ -12,13 +12,20 @@ export function useDesignSystems() {
     try {
       const { data, error } = await supabase
         .from('design_systems')
-        .select('*')
+        .select('id, name, markdown, is_active, reference_image_urls, created_at, updated_at')
         .order('created_at', { ascending: false })
       if (error) {
         setDesignSystems([])
         setError(null)
       } else {
-        setDesignSystems(data ?? [])
+        setDesignSystems(
+          (data ?? []).map((row) => ({
+            ...(row as DesignSystem),
+            reference_image_urls: Array.isArray((row as DesignSystem).reference_image_urls)
+              ? (row as DesignSystem).reference_image_urls
+              : [],
+          }))
+        )
       }
     } catch {
       setDesignSystems([])

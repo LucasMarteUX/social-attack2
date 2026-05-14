@@ -22,7 +22,8 @@ import Spinner from '../components/ui/Spinner'
 import Badge from '../components/ui/Badge'
 import { useCarousels } from '../hooks/useCarousels'
 import { useCarouselSlides } from '../hooks/useCarouselSlides'
-import { gerarRoteirosNodes, generateSlideImage } from '../lib/gemini'
+import { useDesignSystems } from '../hooks/useDesignSystems'
+import { gerarRoteirosNodes, gerarSlideCompleto, analisarReferenciasVisuais, carouselSlideToNodeSlide } from '../lib/gemini'
 import { supabase } from '../lib/supabase'
 import type { CarouselSlide, SlideStyles } from '../data/mock'
 import { DEFAULT_SLIDE_STYLES } from '../data/mock'
@@ -54,6 +55,7 @@ export default function WorkspacePage() {
   const isNew = !id || id === 'novo'
 
   const { criar: criarCarousel, atualizarStatus, getById, carousels } = useCarousels()
+  const { designSystems } = useDesignSystems()
 
   const [carouselId, setCarouselId] = useState<string | null>(isNew ? null : (id ?? null))
   const { slides, loading: slidesLoading, inserirSlides, editarTexto, resetarTexto, atualizarImagem, atualizarTextoRegenerado, buscarHistorico } = useCarouselSlides(carouselId ?? '')
@@ -61,11 +63,44 @@ export default function WorkspacePage() {
   const [, setSlideStyles] = useState<SlideStyles>(DEFAULT_SLIDE_STYLES)
   const slideStylesRef = useRef<SlideStyles>(DEFAULT_SLIDE_STYLES)
   const slidesInitialized = useRef(false)
+  const designSystemMarkdownRef = useRef('')
+  const visualRefDescRef = useRef('')
 
   const [, setGenerating] = useState(false)
   const [regenModal, setRegenModal] = useState<{ slideId: string; campo: string; textoAtual: string; slideType: string; historico: ReturnType<typeof buscarHistorico> extends Promise<infer T> ? T : never } | null>(null)
   const [regenHistorico, setRegenHistorico] = useState<{ id: string; new_value: string | null; created_at: string }[]>([])
-  const [imageModal, setImageModal] = useState<{ slideId: string; promptInicial: string } | null>(null)
+  const [imageModal, setImageModal] = useState<{ slideId: string } | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    async function syncDsContext() {
+      if (!carouselId || isNew) return
+      const car = carousels.find((c) => c.id === carouselId)
+      const dsId = car?.design_system_id
+      if (!dsId) {
+        designSystemMarkdownRef.current = ''
+        visualRefDescRef.current = ''
+        return
+      }
+      const ds = designSystems.find((d) => d.id === dsId)
+      designSystemMarkdownRef.current = ds?.markdown ?? ''
+      const urls = ds?.reference_image_urls ?? []
+      if (!urls.length) {
+        visualRefDescRef.current = ''
+        return
+      }
+      try {
+        const desc = await analisarReferenciasVisuais(urls)
+        if (!cancelled) visualRefDescRef.current = desc
+      } catch {
+        if (!cancelled) visualRefDescRef.current = ''
+      }
+    }
+    void syncDsContext()
+    return () => {
+      cancelled = true
+    }
+  }, [carouselId, isNew, carousels, designSystems])
 
   // Quando abrindo workspace existente: carrega estilos do carrossel
   useEffect(() => {
@@ -106,6 +141,7 @@ export default function WorkspacePage() {
     tomDescricao: string
     designSystemId: string
     designSystemMarkdown: string
+    designSystemReferenceUrls: string[]
     totalSlides: number
     autoGerarImagens: boolean
   }) {
@@ -127,6 +163,18 @@ export default function WorkspacePage() {
       const estilos = script.styles ?? DEFAULT_SLIDE_STYLES
       setSlideStyles(estilos)
       slideStylesRef.current = estilos
+
+      let referenceDescription = ''
+      const refUrls = params.designSystemReferenceUrls ?? []
+      if (refUrls.length) {
+        try {
+          referenceDescription = await analisarReferenciasVisuais(refUrls)
+        } catch {
+          referenceDescription = ''
+        }
+      }
+      designSystemMarkdownRef.current = params.designSystemMarkdown
+      visualRefDescRef.current = referenceDescription
 
       const carousel = await criarCarousel({
         title: params.titulo,
@@ -158,6 +206,7 @@ export default function WorkspacePage() {
         image_url: null,
         image_source: 'none' as const,
         image_generation_prompt: null,
+        image_is_full_composition: false,
         is_text_edited: false,
         is_image_edited: false,
         regenerate_text_count: 0,
@@ -173,7 +222,11 @@ export default function WorkspacePage() {
       window.history.replaceState(null, '', `/workspace/${carousel.id}`)
 
       if (params.autoGerarImagens) {
-        gerarImagensEmBackground(novosSlides, carousel.id).catch(console.error)
+        gerarImagensEmBackground(novosSlides, carousel.id, {
+          styles: estilos,
+          designSystemMarkdown: params.designSystemMarkdown,
+          referenceDescription,
+        }).catch(console.error)
       }
 
     } catch (e) {
@@ -184,28 +237,42 @@ export default function WorkspacePage() {
     }
   }
 
-  async function gerarImagensEmBackground(slidesList: CarouselSlide[], cId: string) {
+  async function gerarImagensEmBackground(
+    slidesList: CarouselSlide[],
+    cId: string,
+    ctx: { styles: SlideStyles; designSystemMarkdown: string; referenceDescription: string }
+  ) {
     setNodes((nds) => nds.map((n) =>
       n.id.startsWith('slide-') ? { ...n, data: { ...n.data, imageGenerating: true } } : n
     ))
 
     await Promise.allSettled(
       slidesList.map(async (slide) => {
-        const promptBase = [slide.headline, slide.body_paragraph, slide.cta_message, slide.tag_text]
-          .filter(Boolean).join('. ')
-        const prompt = `${promptBase}. Estilo editorial Instagram, proporção 4:5, sem texto na imagem.`
         try {
-          const dataUrl = await generateSlideImage(prompt)
-          const path = `${cId}/${slide.id}/auto.jpg`
+          const dataUrl = await gerarSlideCompleto({
+            slide: carouselSlideToNodeSlide(slide),
+            styles: ctx.styles,
+            designSystemMarkdown: ctx.designSystemMarkdown,
+            referenceDescription: ctx.referenceDescription,
+          })
+          const path = `${cId}/${slide.id}/full-${slide.slide_number}.png`
           const blob = dataURLtoBlob(dataUrl)
           const { data: storageData, error } = await supabase.storage
             .from('carousel-images')
-            .upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
+            .upload(path, blob, { upsert: true, contentType: blob.type || 'image/png' })
           if (!error && storageData) {
             const { data: urlData } = supabase.storage.from('carousel-images').getPublicUrl(storageData.path)
-            await atualizarImagem(slide.id, urlData.publicUrl, 'generated', prompt)
+            await atualizarImagem(
+              slide.id,
+              urlData.publicUrl,
+              'generated',
+              'Post completo (texto + layout via IA)',
+              true
+            )
           }
-        } catch { /* falha silenciosa por slide */ } finally {
+        } catch {
+          /* falha silenciosa por slide */
+        } finally {
           setNodes((nds) => nds.map((n) =>
             n.id === `slide-${slide.id}` ? { ...n, data: { ...n.data, imageGenerating: false } } : n
           ))
@@ -268,8 +335,7 @@ export default function WorkspacePage() {
         setRegenModal({ slideId, campo, textoAtual, slideType: slide.slide_type, historico: hist })
       },
       onAbrirGerarImagem: (slideId: string) => {
-        const promptBase = [slide.headline, slide.body_paragraph, slide.cta_message].filter(Boolean).join('. ')
-        setImageModal({ slideId, promptInicial: `${promptBase}. Estilo Instagram 4:5, sem texto na imagem.` })
+        setImageModal({ slideId })
       },
       onUploadImagem: async (slideId: string, file: File) => {
         const path = `${carouselId}/${slideId}/${file.name}`
@@ -309,13 +375,31 @@ export default function WorkspacePage() {
     refreshSlideNode(regenModal.slideId)
   }
 
-  async function handleConfirmarImagem(imageDataUrl: string, prompt: string) {
-    if (!imageModal) return
-    await atualizarImagem(imageModal.slideId, imageDataUrl, 'generated', prompt)
+  async function handleConfirmarImagem(
+    imageDataUrl: string,
+    prompt: string,
+    opts?: { imageIsFullComposition?: boolean }
+  ) {
+    if (!imageModal || !carouselId) return
+    const path = `${carouselId}/${imageModal.slideId}/modal-${Date.now()}.png`
+    const blob = dataURLtoBlob(imageDataUrl)
+    const { data: storageData, error } = await supabase.storage
+      .from('carousel-images')
+      .upload(path, blob, { upsert: true, contentType: blob.type || 'image/png' })
+    if (error) throw new Error(error.message)
+    const { data: urlData } = supabase.storage.from('carousel-images').getPublicUrl(storageData.path)
+    await atualizarImagem(
+      imageModal.slideId,
+      urlData.publicUrl,
+      'generated',
+      prompt,
+      opts?.imageIsFullComposition ?? false
+    )
     refreshSlideNode(imageModal.slideId)
   }
 
   const carouselInfo = !isNew && carouselId ? getById(carouselId) : null
+  const modalSlide = imageModal ? slides.find((s) => s.id === imageModal.slideId) : undefined
 
   return (
     <div className="w-full h-[calc(100vh-64px)] relative">
@@ -384,11 +468,17 @@ export default function WorkspacePage() {
         />
       )}
 
-      {imageModal && (
+      {imageModal && modalSlide && (
         <GenerateImageModal
-          open={!!imageModal}
+          open
           onClose={() => setImageModal(null)}
-          promptInicial={imageModal.promptInicial}
+          variant="full_slide"
+          fullSlide={{
+            slide: modalSlide,
+            styles: slideStylesRef.current,
+            designSystemMarkdown: designSystemMarkdownRef.current,
+            referenceDescription: visualRefDescRef.current,
+          }}
           onConfirmar={handleConfirmarImagem}
         />
       )}

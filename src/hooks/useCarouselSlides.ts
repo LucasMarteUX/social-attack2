@@ -15,8 +15,16 @@ export function useCarouselSlides(carouselId: string) {
         .select('*')
         .eq('carousel_id', carouselId)
         .order('slide_number', { ascending: true })
-      if (!error) setSlides(data ?? [])
-      else setSlides([])
+      if (!error && data) {
+        setSlides(
+          data.map((row) => ({
+            ...(row as CarouselSlide),
+            image_is_full_composition: Boolean((row as CarouselSlide).image_is_full_composition),
+          }))
+        )
+      } else {
+        setSlides([])
+      }
     } catch {
       setSlides([])
     } finally {
@@ -85,7 +93,8 @@ export function useCarouselSlides(carouselId: string) {
     slideId: string,
     imageUrl: string | null,
     imageSource: CarouselSlide['image_source'],
-    prompt?: string
+    prompt?: string,
+    imageIsFullComposition?: boolean
   ) {
     const actionType: SlideActionType = imageUrl === null
       ? 'image_removed'
@@ -93,12 +102,16 @@ export function useCarouselSlides(carouselId: string) {
       ? 'image_uploaded'
       : 'image_generated'
 
+    const compositionFlag =
+      imageUrl === null ? false : imageSource === 'generated' ? Boolean(imageIsFullComposition) : false
+
     const { data, error } = await supabase
       .from('carousel_slides')
       .update({
         image_url: imageUrl,
         image_source: imageSource,
         image_generation_prompt: prompt ?? null,
+        image_is_full_composition: compositionFlag,
         is_image_edited: imageUrl !== null,
         ...(imageSource === 'generated' ? { regenerate_image_count: (slides.find((s) => s.id === slideId)?.regenerate_image_count ?? 0) + 1 } : {}),
       })

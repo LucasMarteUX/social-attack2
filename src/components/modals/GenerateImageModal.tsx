@@ -3,32 +3,68 @@ import { Wand2 } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Button from '../ui/Button'
 import Spinner from '../ui/Spinner'
-import { generateSlideImage } from '../../lib/gemini'
+import { generateSlideImage, gerarSlideCompleto, carouselSlideToNodeSlide } from '../../lib/gemini'
+import type { CarouselSlide, SlideStyles } from '../../data/mock'
+
+interface FullSlideContext {
+  slide: CarouselSlide
+  styles: SlideStyles
+  designSystemMarkdown: string
+  referenceDescription: string
+}
 
 interface Props {
   open: boolean
   onClose: () => void
-  promptInicial: string
-  onConfirmar: (imageDataUrl: string, prompt: string) => Promise<void>
+  variant: 'free_prompt' | 'full_slide'
+  promptInicial?: string
+  fullSlide?: FullSlideContext
+  onConfirmar: (imageDataUrl: string, prompt: string, opts?: { imageIsFullComposition?: boolean }) => Promise<void>
 }
 
-export default function GenerateImageModal({ open, onClose, promptInicial, onConfirmar }: Props) {
+export default function GenerateImageModal({
+  open,
+  onClose,
+  variant,
+  promptInicial = '',
+  fullSlide,
+  onConfirmar,
+}: Props) {
   const [prompt, setPrompt] = useState(promptInicial)
   const [loading, setLoading] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
-    if (open) { setPrompt(promptInicial); setPreview(null); setErro(null) }
+    if (open) {
+      setPrompt(promptInicial)
+      setPreview(null)
+      setErro(null)
+    }
   }, [open, promptInicial])
 
   async function handleGerar() {
-    if (!prompt.trim()) return
+    if (variant === 'free_prompt' && !prompt.trim()) return
+    if (variant === 'full_slide' && !fullSlide) {
+      setErro('Dados do slide indisponíveis.')
+      return
+    }
+
     setLoading(true)
     setErro(null)
     try {
-      const dataUrl = await generateSlideImage(prompt.trim())
-      setPreview(dataUrl)
+      if (variant === 'full_slide' && fullSlide) {
+        const dataUrl = await gerarSlideCompleto({
+          slide: carouselSlideToNodeSlide(fullSlide.slide),
+          styles: fullSlide.styles,
+          designSystemMarkdown: fullSlide.designSystemMarkdown,
+          referenceDescription: fullSlide.referenceDescription,
+        })
+        setPreview(dataUrl)
+      } else {
+        const dataUrl = await generateSlideImage(prompt.trim())
+        setPreview(dataUrl)
+      }
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao gerar imagem')
     } finally {
@@ -38,27 +74,40 @@ export default function GenerateImageModal({ open, onClose, promptInicial, onCon
 
   async function handleConfirmar() {
     if (!preview) return
-    await onConfirmar(preview, prompt.trim())
+    await onConfirmar(
+      preview,
+      variant === 'full_slide' ? 'Post completo gerado (texto integrado à arte)' : prompt.trim(),
+      { imageIsFullComposition: variant === 'full_slide' }
+    )
     onClose()
   }
 
+  const titulo =
+    variant === 'full_slide' ? 'Gerar arte do post (IA)' : 'Gerar imagem com IA'
+
   return (
-    <Modal open={open} onClose={onClose} title="Gerar imagem com IA">
+    <Modal open={open} onClose={onClose} title={titulo}>
       <div className="flex flex-col gap-4">
+        {variant === 'full_slide' ? (
+          <p className="text-body-sm text-neutral-600">
+            Será gerada uma imagem única já com o texto do slide aplicado, seguindo o design system e as referências visuais cadastradas (quando houver).
+          </p>
+        ) : (
+          <div>
+            <label className="text-label font-medium text-neutral-700 block mb-1">Prompt de imagem</label>
+            <textarea
+              className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-body-sm text-neutral-900 outline-none focus:border-purple-500 transition-colors resize-none"
+              rows={3}
+              placeholder="Descreva a imagem que deseja gerar…"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+            />
+            <p className="text-[11px] text-neutral-400 mt-1">
+              Modo livre: útil para fundos ou ilustrações sem texto embutido.
+            </p>
+          </div>
+        )}
 
-        <div>
-          <label className="text-label font-medium text-neutral-700 block mb-1">Prompt de imagem</label>
-          <textarea
-            className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-body-sm text-neutral-900 outline-none focus:border-purple-500 transition-colors resize-none"
-            rows={3}
-            placeholder="Descreva a imagem que deseja gerar…"
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-          />
-          <p className="text-[11px] text-neutral-400 mt-1">Dica: descreva o cenário, estilo visual, cores e mood.</p>
-        </div>
-
-        {/* Preview */}
         {loading && (
           <div className="flex items-center justify-center gap-3 py-8 bg-purple-50 rounded-xl border border-purple-100">
             <Spinner size="md" />
@@ -76,12 +125,17 @@ export default function GenerateImageModal({ open, onClose, promptInicial, onCon
         {erro && <p className="text-body-sm text-red-600 bg-red-50 p-3 rounded-lg">{erro}</p>}
 
         <div className="flex gap-3 justify-end pt-2">
-          <Button variant="secondary" onClick={handleGerar} loading={loading}>
+          <Button
+            variant="secondary"
+            onClick={() => void handleGerar()}
+            loading={loading}
+            disabled={variant === 'free_prompt' && !prompt.trim()}
+          >
             <Wand2 size={14} />
-            {preview ? 'Gerar novamente' : 'Gerar imagem'}
+            {preview ? 'Gerar novamente' : 'Gerar'}
           </Button>
-          <Button onClick={handleConfirmar} disabled={!preview || loading}>
-            Confirmar imagem
+          <Button onClick={() => void handleConfirmar()} disabled={!preview || loading}>
+            Usar esta imagem
           </Button>
         </div>
       </div>
