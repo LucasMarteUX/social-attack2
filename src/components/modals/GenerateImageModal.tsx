@@ -9,7 +9,7 @@ import type { CarouselSlide, SlideStyles } from '../../data/mock'
 interface FullSlideContext {
   slide: CarouselSlide
   styles: SlideStyles
-  designSystemMarkdown: string
+  visualBrief?: string
   referenceDescription: string
 }
 
@@ -57,7 +57,7 @@ export default function GenerateImageModal({
         const dataUrl = await gerarSlideCompleto({
           slide: carouselSlideToNodeSlide(fullSlide.slide),
           styles: fullSlide.styles,
-          designSystemMarkdown: fullSlide.designSystemMarkdown,
+          visualBrief: fullSlide.visualBrief,
           referenceDescription: fullSlide.referenceDescription,
         })
         setPreview(dataUrl)
@@ -90,7 +90,7 @@ export default function GenerateImageModal({
       <div className="flex flex-col gap-4">
         {variant === 'full_slide' ? (
           <p className="text-body-sm text-neutral-600">
-            Será gerada uma imagem única já com o texto do slide aplicado, seguindo o design system e as referências visuais cadastradas (quando houver).
+            Será gerada uma imagem única já com o texto do slide aplicado, usando os tokens de cor/tipografia do carrossel, um resumo visual opcional do design system e as referências visuais cadastradas (quando houver).
           </p>
         ) : (
           <div>

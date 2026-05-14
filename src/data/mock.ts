@@ -134,6 +134,9 @@ export interface Carousel {
 }
 
 export type SlideType = 'cover' | 'body' | 'cta'
+/** Copy provisória no fluxo progressivo de geração */
+export const PLACEHOLDER_TEXTO_SLIDE_GERANDO = 'Gerando conteúdo…'
+
 export type ImageSource = 'none' | 'uploaded' | 'generated'
 
 export interface CarouselSlide {

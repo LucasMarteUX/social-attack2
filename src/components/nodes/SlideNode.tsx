@@ -4,7 +4,7 @@ import { RotateCcw, Wand2, Upload, Trash2, ChevronLeft, ChevronRight, Image } fr
 import Badge from '../ui/Badge'
 import Spinner from '../ui/Spinner'
 import type { CarouselSlide, SlideStyles } from '../../data/mock'
-import { DEFAULT_SLIDE_STYLES as DSS } from '../../data/mock'
+import { DEFAULT_SLIDE_STYLES as DSS, PLACEHOLDER_TEXTO_SLIDE_GERANDO } from '../../data/mock'
 
 export interface SlideNodeData {
   slide: CarouselSlide
@@ -27,6 +27,10 @@ interface Props {
 const SLIDE_TYPE_LABEL: Record<string, string> = { cover: 'Capa', body: 'Corpo', cta: 'CTA' }
 
 const SCALE = 0.38
+
+function phCls(val: string | null | undefined) {
+  return val === PLACEHOLDER_TEXTO_SLIDE_GERANDO ? ' italic text-neutral-400' : ''
+}
 
 function px(size: number) {
   return `${Math.max(8, Math.round(size * SCALE))}px`
@@ -119,17 +123,17 @@ export default function SlideNode({ data }: Props) {
             {slide.slide_type === 'cover' && (
               <>
                 {slide.tag_text && (
-                  <span className="font-bold uppercase tracking-wider" style={{ fontSize: px(s.coverHeadlineFontSize * 0.375), color: s.tagColor }}>
+                  <span className={`font-bold uppercase tracking-wider${phCls(slide.tag_text)}`} style={{ fontSize: px(s.coverHeadlineFontSize * 0.375), color: s.tagColor }}>
                     {slide.tag_text}
                   </span>
                 )}
                 {slide.headline && (
-                  <span className="font-black leading-tight" style={{ fontSize: px(s.coverHeadlineFontSize), color: s.textColor }}>
+                  <span className={`font-black leading-tight${phCls(slide.headline)}`} style={{ fontSize: px(s.coverHeadlineFontSize), color: s.textColor }}>
                     {slide.headline}
                   </span>
                 )}
                 {slide.subheadline && (
-                  <span className="leading-snug" style={{ fontSize: px(s.coverSubheadlineFontSize), color: s.textColor, opacity: 0.7 }}>
+                  <span className={`leading-snug${phCls(slide.subheadline)}`} style={{ fontSize: px(s.coverSubheadlineFontSize), color: s.textColor, opacity: 0.7 }}>
                     {slide.subheadline}
                   </span>
                 )}
@@ -138,19 +142,19 @@ export default function SlideNode({ data }: Props) {
             {slide.slide_type === 'body' && (
               <>
                 {slide.headline && (
-                  <span className="font-bold leading-tight" style={{ fontSize: px(s.bodyHeadlineFontSize), color: s.textColor }}>
+                  <span className={`font-bold leading-tight${phCls(slide.headline)}`} style={{ fontSize: px(s.bodyHeadlineFontSize), color: s.textColor }}>
                     {slide.headline}
                   </span>
                 )}
                 {slide.body_paragraph && (
-                  <span className="leading-relaxed" style={{ fontSize: px(s.bodyParagraphFontSize), color: s.textColor, opacity: 0.8 }}>
+                  <span className={`leading-relaxed${phCls(slide.body_paragraph)}`} style={{ fontSize: px(s.bodyParagraphFontSize), color: s.textColor, opacity: 0.8 }}>
                     {slide.body_paragraph}
                   </span>
                 )}
               </>
             )}
             {slide.slide_type === 'cta' && slide.cta_message && (
-              <span className="font-black text-center leading-tight" style={{ fontSize: px(s.ctaFontSize), color: s.ctaTextColor }}>
+              <span className={`font-black text-center leading-tight${phCls(slide.cta_message)}`} style={{ fontSize: px(s.ctaFontSize), color: s.ctaTextColor }}>
                 {slide.cta_message}
               </span>
             )}
@@ -237,6 +241,7 @@ interface CampoTextoProps {
 
 function CampoTexto({ label, campo, valor, editando, valorTemp, multiline, onIniciar, onSalvar, onChange, onRegenerar }: CampoTextoProps) {
   const ativo = editando === campo
+  const valorEhPlaceholder = valor === PLACEHOLDER_TEXTO_SLIDE_GERANDO
   return (
     <div className="flex flex-col gap-0.5">
       <div className="flex items-center justify-between">
@@ -252,7 +257,7 @@ function CampoTexto({ label, campo, valor, editando, valorTemp, multiline, onIni
           <input autoFocus value={valorTemp} onChange={(e) => onChange(e.target.value)} onBlur={onSalvar} onKeyDown={(e) => e.key === 'Enter' && onSalvar()} className="w-full px-2 py-1.5 rounded border border-purple-400 text-[11px] text-neutral-900 outline-none focus:ring-1 focus:ring-purple-300" />
         )
       ) : (
-        <p onClick={() => onIniciar(campo, valor ?? '')} className="text-[11px] text-neutral-700 leading-relaxed px-2 py-1.5 rounded border border-transparent hover:border-neutral-200 hover:bg-neutral-50 cursor-text transition-colors min-h-[28px]">
+        <p onClick={() => onIniciar(campo, valor ?? '')} className={`text-[11px] leading-relaxed px-2 py-1.5 rounded border border-transparent hover:border-neutral-200 hover:bg-neutral-50 cursor-text transition-colors min-h-[28px] ${valorEhPlaceholder ? 'text-neutral-400 italic' : 'text-neutral-700'}`}>
           {valor || <span className="text-neutral-300 italic">Clique para editar</span>}
         </p>
       )}

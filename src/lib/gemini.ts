@@ -261,9 +261,107 @@ export interface NodeCarouselScript {
   slides: NodeSlide[]
 }
 
-interface ParsedNodeCarouselJson {
-  styles?: Partial<SlideStyles>
+interface ParsedSlidesOnlyJson {
   slides: NodeSlide[]
+}
+
+const DS_MARKDOWN_MAX_CHARS = 10_000
+
+function truncarMarkdown(ds: string): string {
+  const t = ds.trim()
+  if (t.length <= DS_MARKDOWN_MAX_CHARS) return t
+  return `${t.slice(0, DS_MARKDOWN_MAX_CHARS)}\n\n[… documento truncado …]`
+}
+
+/** Fase 1a: só copy editorial (tema + referências). Sem design system. */
+export async function gerarConteudoSlides(params: {
+  titulo: string
+  descricao: string
+  referencesUrls: string[]
+  referencesText: string
+  tomNome: string
+  tomDescricao: string
+  totalSlides: number
+}): Promise<NodeSlide[]> {
+  const { titulo, descricao, referencesUrls, referencesText, tomNome, tomDescricao, totalSlides } = params
+  const hasUrls = referencesUrls.length > 0
+
+  const refBlock = [
+    referencesText ? `Contexto adicional:\n${referencesText}` : '',
+    hasUrls ? `Links de referência (use como fonte do argumento):\n${referencesUrls.map((u) => `- ${u}`).join('\n')}` : '',
+  ].filter(Boolean).join('\n\n')
+
+  const prompt = `Você é estrategista de conteúdo para Instagram (somente TEXTO dos slides).
+
+TEMA DO CARROSSEL: "${titulo}"
+Descrição: ${descricao || 'não fornecida'}.
+Tom de voz: ${tomNome}${tomDescricao ? ` — ${tomDescricao}` : ''}.
+${refBlock ? `\n${refBlock}\n` : ''}
+
+TAREFA: gere EXATAMENTE ${totalSlides} slides de CONTEÚDO editorial.
+- O assunto dos textos deve vir do tema + descrição + referências (URLs/contexto). Não invente outro tema.
+- Slide 1 "cover": tag (2–3 palavras), headline forte, subheadline curta.
+- Slides 2 a ${totalSlides - 1} "body": headline + body_paragraph (2–3 linhas).
+- Slide ${totalSlides} "cta": cta_message (convite a salvar/compartilhar/seguir).
+
+PROIBIDO neste JSON: falar de design system, paleta, ferramentas de UI, mockups ou documentação visual.
+
+Responda APENAS com JSON válido:
+{
+  "slides": [
+    { "slide_number": 1, "slide_type": "cover", "tag_text": "...", "headline": "...", "subheadline": "..." },
+    { "slide_number": 2, "slide_type": "body", "headline": "...", "body_paragraph": "..." },
+    { "slide_number": ${totalSlides}, "slide_type": "cta", "cta_message": "..." }
+  ]
+}`
+
+  const text = await callGemini(prompt, hasUrls)
+  const parsed = extrairJSON<ParsedSlidesOnlyJson>(text, false)
+  return normalizeNodeSlides(parsed.slides ?? [], totalSlides)
+}
+
+/** Fase 1b: extrai tokens visuais do markdown do DS (chamada separada). */
+export async function extrairSlideStylesDoDesignSystem(designSystemMarkdown: string): Promise<Partial<SlideStyles>> {
+  const md = truncarMarkdown(designSystemMarkdown)
+  if (!md) return {}
+
+  const prompt = `Você interpreta um guia de design system em Markdown e devolve APENAS tokens visuais para slides de carrossel Instagram.
+
+Markdown do design system:
+---
+${md}
+---
+
+Extraia e mapeie para este JSON (use valores do guia; onde não houver info, use os defaults sugeridos abaixo).
+NÃO inclua texto de slides, headlines nem copy. Apenas o objeto "styles".
+
+Defaults sugeridos quando ausente no guia:
+{"primaryColor":"#6D28D9","backgroundColor":"#FFFFFF","textColor":"#1A1A1A","ctaBackgroundColor":"#6D28D9","ctaTextColor":"#FFFFFF","tagColor":"#6D28D9","coverHeadlineFontSize":32,"coverSubheadlineFontSize":14,"bodyHeadlineFontSize":24,"bodyParagraphFontSize":16,"ctaFontSize":28,"coverTextAlign":"left","bodyTextAlign":"left","padding":24}
+
+Responda APENAS com JSON no formato:
+{"styles": { ...campos SlideStyles... }}`
+
+  const text = await callGemini(prompt, false)
+  const parsed = extrairJSON<{ styles?: Partial<SlideStyles> }>(text, false)
+  return parsed.styles ?? {}
+}
+
+/** Brief curto só para Imagen — regras visuais, sem colar o markdown bruto. */
+export async function compactarDesignSystemParaBriefVisual(designSystemMarkdown: string): Promise<string> {
+  const md = truncarMarkdown(designSystemMarkdown)
+  if (!md) return ''
+
+  const prompt = `Resuma o Markdown abaixo em NO MÁXIMO 600 caracteres, em português, só como REGRAS VISUAIS ABSTRATAS para gerar imagens estáticas de carrossel (paleta, contraste, hierarquia tipográfica, margens, ritmo, estilo gráfico genérico).
+
+PROIBIDO na sua resposta: copiar títulos do documento, palavras literais longas do guia, "design system documentation", menção a celular/mockup/tela/wireframe.
+
+Markdown:
+---
+${md}
+---`
+
+  const text = (await callGemini(prompt, false)).trim()
+  return text.length > 900 ? text.slice(0, 897) + '…' : text
 }
 
 function normalizeNodeSlides(raw: NodeSlide[], totalSlides: number): NodeSlide[] {
@@ -337,65 +435,26 @@ export async function gerarRoteirosNodes(params: {
   totalSlides: number
 }): Promise<NodeCarouselScript> {
   const { titulo, descricao, referencesUrls, referencesText, tomNome, tomDescricao, designSystemMarkdown, totalSlides } = params
-  const hasUrls = referencesUrls.length > 0
 
-  const refBlock = [
-    referencesText ? `Contexto adicional:\n${referencesText}` : '',
-    hasUrls ? `Links de referência:\n${referencesUrls.map((u) => `- ${u}`).join('\n')}` : '',
-  ].filter(Boolean).join('\n\n')
+  const [slides, partialStyles] = await Promise.all([
+    gerarConteudoSlides({
+      titulo,
+      descricao,
+      referencesUrls,
+      referencesText,
+      tomNome,
+      tomDescricao,
+      totalSlides,
+    }),
+    designSystemMarkdown.trim()
+      ? extrairSlideStylesDoDesignSystem(designSystemMarkdown)
+      : Promise.resolve({} as Partial<SlideStyles>),
+  ])
 
-  const dsBlock = designSystemMarkdown.trim()
-    ? `\nDesign System:\n${designSystemMarkdown}\n`
-    : ''
-
-  const prompt = `Você é um especialista em criação de conteúdo e design para Instagram.
-
-TAREFA: Gere um carrossel com ${totalSlides} slides sobre "${titulo}" E extraia os estilos visuais do design system.
-
-Tom de voz: ${tomNome}${tomDescricao ? ` — ${tomDescricao}` : ''}.
-Descrição: ${descricao || 'não fornecida'}.
-${dsBlock}${refBlock ? `\n${refBlock}\n` : ''}
-SLIDES:
-- Slide 1: tipo "cover" — tag (2-3 palavras), headline (título impactante), subheadline (frase curta)
-- Slides 2 a ${totalSlides - 1}: tipo "body" — headline + body_paragraph (2-3 linhas)
-- Slide ${totalSlides}: tipo "cta" — cta_message (chamada para salvar/seguir)
-
-Regras:
-- Textos diretos e sem prolixidade
-- Se há URLs de referência, pesquise e use o conteúdo dessas fontes
-- Responda APENAS com JSON válido, sem texto extra
-
-Formato obrigatório (preencha "styles" com os valores reais do design system acima; use os defaults indicados se não houver design system):
-{
-  "styles": {
-    "primaryColor": "#6D28D9",
-    "backgroundColor": "#FFFFFF",
-    "textColor": "#1A1A1A",
-    "ctaBackgroundColor": "#6D28D9",
-    "ctaTextColor": "#FFFFFF",
-    "tagColor": "#6D28D9",
-    "coverHeadlineFontSize": 32,
-    "coverSubheadlineFontSize": 14,
-    "bodyHeadlineFontSize": 24,
-    "bodyParagraphFontSize": 16,
-    "ctaFontSize": 28,
-    "coverTextAlign": "left",
-    "bodyTextAlign": "left",
-    "padding": 24
-  },
-  "slides": [
-    { "slide_number": 1, "slide_type": "cover", "tag_text": "...", "headline": "...", "subheadline": "..." },
-    { "slide_number": 2, "slide_type": "body", "headline": "...", "body_paragraph": "..." },
-    { "slide_number": ${totalSlides}, "slide_type": "cta", "cta_message": "..." }
-  ]
-}`
-
-  const text = await callGemini(prompt, hasUrls)
-  const parsed = extrairJSON<ParsedNodeCarouselJson>(text, false)
-  const mergedStyles: SlideStyles = { ...DEFAULT_SLIDE_STYLES, ...(parsed.styles ?? {}) }
+  const mergedStyles: SlideStyles = { ...DEFAULT_SLIDE_STYLES, ...partialStyles }
   return {
     styles: mergedStyles,
-    slides: normalizeNodeSlides(parsed.slides ?? [], totalSlides),
+    slides,
   }
 }
 
@@ -567,16 +626,12 @@ export async function analisarReferenciasVisuais(imageUrls: string[]): Promise<s
       parts: [
         ...validParts,
         {
-          text: `Analise estas imagens só como referência de ESTILO para novos layouts de carrossel Instagram (4:5). Não copie logos, marcas, fotos reconhecíveis, texto literal nem layout pixel a pixel.
+          text: `Estas imagens são REFERÊNCIA VISUAL apenas para novos layouts de carrossel Instagram (proporção 4:5).
 
-Extraia um PADRÃO REPETÍVEL que deva valer para TODOS os slides do mesmo carrossel:
-- Paleta (fundo, texto, acentos) e contraste
-- Hierarquia tipográfica (pesos, tamanhos relativos, espaçamento entre linhas)
-- Ritmo de quadro: margens seguras, grid implícito, alinhamentos predominantes
-- Tratamento visual: foto cheia vs tipografia dominante vs ilustração; uso de sombras, cantos, linhas ou formas decorativas GENÉRICAS
-- Como imaginar capa vs slide de conteúdo vs CTA mantendo a mesma “família” visual
+NÃO descreva: smartphones, laptops, molduras de dispositivo, telas de app, wireframes, páginas de documentação, screenshots de sites ou UI de “design system”.
+Descreva só estilo ABSTRATO reutilizável: paleta, contraste, hierarquia tipográfica (pesos/tamanhos relativos), margens, grid, densidade, geométricos decorativos genéricos, tratamento foto vs tipo vs ilustração genérica.
 
-Responda em português, até ~180 palavras, em bullets curtos quando ajudar a clareza. Última linha: “Regras para manter consistência entre slides: …”.`,
+Responda em português, até ~160 palavras em bullets. Última linha: “Consistência entre slides: …”.`,
         },
       ],
     }],
@@ -594,14 +649,13 @@ Responda em português, até ~180 palavras, em bullets curtos quando ajudar a cl
 }
 
 // Gera o slide COMPLETO como imagem — texto + design + visual integrados
-// A imagem gerada é o próprio post, não apenas uma imagem de fundo
 export async function gerarSlideCompleto(params: {
   slide: NodeSlide
   styles: SlideStyles
-  designSystemMarkdown: string
+  visualBrief?: string
   referenceDescription: string
 }): Promise<string> {
-  const { slide, styles: s, designSystemMarkdown, referenceDescription } = params
+  const { slide, styles: s, visualBrief = '', referenceDescription } = params
 
   const typeLabel = slide.slide_type === 'cover' ? 'Capa' : slide.slide_type === 'body' ? 'Conteúdo' : 'CTA'
   const isCTA = slide.slide_type === 'cta'
@@ -625,38 +679,42 @@ export async function gerarSlideCompleto(params: {
     ? 'Slide de conteúdo: fundo limpo, texto bem espaçado, elemento gráfico complementar sutil'
     : 'Slide CTA: fundo totalmente preenchido com cor de destaque, texto centralizado e impactante'
 
-  const dsNote = designSystemMarkdown.trim()
-    ? `\nDOCUMENTAÇÃO DO DESIGN SYSTEM (siga rigorosamente):\n${designSystemMarkdown}\n`
+  const briefNote = visualBrief.trim()
+    ? `\nDIRETRIZES VISUAIS RESUMIDAS (estilo apenas — não ilustrar como documento nem UI):\n${visualBrief}\n`
     : ''
 
   const refNote = referenceDescription.trim()
-    ? `\nPADRÃO DAS REFERÊNCIAS VISUAIS (mantenha este sistema visual em TODOS os slides deste carrossel — mesma família tipográfica, margens, densidade e linguagem gráfica; não reproduza logos/marcas nem composições idênticas às fotos de referência):\n${referenceDescription}\n`
+    ? `\nALINHAMENTO AO LOOK DE REFERÊNCIA (família visual dos slides; sem copiar logos nem fotos literais):\n${referenceDescription}\n`
     : ''
 
   const ctaColors = isCTA
     ? `- Fundo do slide: ${s.ctaBackgroundColor}\n- Cor do texto: ${s.ctaTextColor}`
     : `- Fundo do slide: ${s.backgroundColor}\n- Cor do texto: ${s.textColor}`
 
-  const prompt = `Post profissional para Instagram carrossel. Proporção 4:5 (portrait), 1080x1350px. Slide ${slide.slide_number} de tipo "${typeLabel}".
+  const prompt = `Post estático para Instagram carrossel. UM ÚNICO quadro vertical ~4:5 (~1080x1350). Slide ${slide.slide_number}, tipo "${typeLabel}".
 
-CORES:
+CONTEÚDO VISUAL: ilustre o TEMA pelos TEXTOS abaixo — não mostre documentação, guias internos nem interfaces de ferramenta.
+
+CORES E TOKENS (obrigatório):
 - Cor primária/destaque: ${s.primaryColor}
 ${ctaColors}
-${dsNote}${refNote}
-TEXTOS QUE DEVEM APARECER NA IMAGEM (exatamente como especificado):
+${briefNote}${refNote}
+TEXTOS QUE DEVEM APARECER NA IMAGEM (exatamente):
 ${contentLines.join('\n') || 'Sem texto'}
 
 LAYOUT: ${layoutDesc}
-Alinhamento de texto: ${alignLabel}
-Padding interno: ${s.padding}px nas bordas
+Alinhamento: ${alignLabel}
+Padding: ${s.padding}px
+
+PROIBIDO NA IMAGEM:
+- Smartphone, tablet, laptop, moldura de dispositivo, mockup de tela, wireframe
+- Página ou painel de “Design System”, documentação técnica, screenshots de sites como objeto principal
+- Palavras como “Design System Documentation” ou títulos de guia que não sejam os textos do slide acima
 
 REQUISITOS:
-- Design editorial de alto nível, moderno e profissional
-- Todos os textos acima DEVEM estar visíveis e legíveis na imagem
-- Tipografia limpa, hierarquia visual clara
-- CONSISTÊNCIA: este slide deve parecer da mesma série que os demais do carrossel (mesmo vocabulário formal de layout das referências + design system)
-- Sem marcas d'água, sem logos externos, sem bordas desnecessárias
-- Estilo Instagram/LinkedIn carrossel profissional`
+- Tipografia legível; hierarquia clara; arte editorial para feed
+- Sem marcas d'água; sem logos de terceiros inventados
+- Este slide deve combinar visualmente com os outros do mesmo carrossel`
 
   return generateSlideImage(prompt)
 }

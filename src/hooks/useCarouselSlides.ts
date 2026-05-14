@@ -152,6 +152,50 @@ export function useCarouselSlides(carouselId: string) {
     await registrarHistorico(slideId, 'text_regenerated', campo, oldValue, novoValor, promptUsado)
   }
 
+  /** Texto vindo da IA na geração inicial — define campos e originals; não marca edição manual. */
+  async function aplicarTextoGerado(
+    slideId: string,
+    patch: Partial<
+      Pick<
+        CarouselSlide,
+        'tag_text' | 'headline' | 'subheadline' | 'body_paragraph' | 'cta_message'
+      >
+    >
+  ): Promise<CarouselSlide | null> {
+    const slide = slides.find((s) => s.id === slideId)
+    if (!slide) return null
+
+    const tag_text = patch.tag_text !== undefined ? patch.tag_text : slide.tag_text
+    const headline = patch.headline !== undefined ? patch.headline : slide.headline
+    const subheadline = patch.subheadline !== undefined ? patch.subheadline : slide.subheadline
+    const body_paragraph = patch.body_paragraph !== undefined ? patch.body_paragraph : slide.body_paragraph
+    const cta_message = patch.cta_message !== undefined ? patch.cta_message : slide.cta_message
+
+    const { data, error } = await supabase
+      .from('carousel_slides')
+      .update({
+        tag_text,
+        headline,
+        subheadline,
+        body_paragraph,
+        cta_message,
+        original_tag_text: tag_text,
+        original_headline: headline,
+        original_subheadline: subheadline,
+        original_body_paragraph: body_paragraph,
+        original_cta_message: cta_message,
+        is_text_edited: false,
+      })
+      .eq('id', slideId)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+
+    const updated = data as CarouselSlide
+    setSlides((prev) => prev.map((s) => (s.id === slideId ? updated : s)))
+    return updated
+  }
+
   async function registrarHistorico(
     slideId: string,
     actionType: SlideActionType,
@@ -189,6 +233,7 @@ export function useCarouselSlides(carouselId: string) {
     resetarTexto,
     atualizarImagem,
     atualizarTextoRegenerado,
+    aplicarTextoGerado,
     buscarHistorico,
     recarregar: carregar,
   }
