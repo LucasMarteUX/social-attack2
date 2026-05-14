@@ -19,6 +19,11 @@ const GEMINI_TEXT_RETRY_BASE_MS = Math.max(
   Number((import.meta.env.VITE_GEMINI_TEXT_RETRY_BASE_MS as string | undefined) ?? '1200') || 1200,
 )
 
+const GEMINI_IMAGE_HTTP_RETRY_MAX = Math.min(
+  6,
+  Math.max(1, Number((import.meta.env.VITE_GEMINI_IMAGE_RETRIES as string | undefined) ?? '3') || 3),
+)
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -812,35 +817,60 @@ async function tryGeminiNativeImage(
   aspectRatio: SlideImageAspectRatio,
   signal: AbortSignal,
 ): Promise<string | null> {
+  const bodyJson = JSON.stringify({
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      responseModalities: ['TEXT', 'IMAGE'],
+      imageConfig: { aspectRatio },
+    },
+  })
+
   for (const modelId of GEMINI_IMAGE_NATIVE_MODEL_IDS) {
-    try {
-      const response = await fetch(geminiGenerateContentUrl(modelId), {
-        method: 'POST',
-        signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': GEMINI_API_KEY,
-        },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          generationConfig: {
-            responseModalities: ['TEXT', 'IMAGE'],
-            imageConfig: { aspectRatio },
-          },
-        }),
-      })
-      const rawText = await response.text()
-      let data: unknown
+    for (let attempt = 0; attempt < GEMINI_IMAGE_HTTP_RETRY_MAX; attempt++) {
       try {
-        data = JSON.parse(rawText) as unknown
-      } catch {
-        continue
+        const response = await fetch(geminiGenerateContentUrl(modelId), {
+          method: 'POST',
+          signal,
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': GEMINI_API_KEY,
+          },
+          body: bodyJson,
+        })
+        const rawText = await response.text()
+
+        if (!response.ok) {
+          if (isTransientGeminiHttpStatus(response.status) && attempt < GEMINI_IMAGE_HTTP_RETRY_MAX - 1) {
+            await sleep(
+              GEMINI_TEXT_RETRY_BASE_MS * 2 ** attempt + Math.floor(Math.random() * 400),
+            )
+            continue
+          }
+          break
+        }
+
+        let data: unknown
+        try {
+          data = JSON.parse(rawText) as unknown
+        } catch {
+          if (attempt < GEMINI_IMAGE_HTTP_RETRY_MAX - 1) {
+            await sleep(GEMINI_TEXT_RETRY_BASE_MS * 2 ** attempt)
+            continue
+          }
+          break
+        }
+
+        const img = extractGeminiNativeInlineImage(data)
+        if (img) return `data:${img.mimeType};base64,${img.data}`
+        break
+      } catch (e) {
+        if (e instanceof Error && e.name === 'AbortError') return null
+        if (attempt < GEMINI_IMAGE_HTTP_RETRY_MAX - 1) {
+          await sleep(GEMINI_TEXT_RETRY_BASE_MS * 2 ** attempt + Math.floor(Math.random() * 400))
+          continue
+        }
+        break
       }
-      if (!response.ok) continue
-      const img = extractGeminiNativeInlineImage(data)
-      if (img) return `data:${img.mimeType};base64,${img.data}`
-    } catch {
-      continue
     }
   }
   return null
@@ -880,51 +910,85 @@ async function predictImagenModel(
   signal: AbortSignal
 ): Promise<string> {
   const url = `${GEMINI_IMAGE_PREDICT}/${modelId}:predict?key=${encodeURIComponent(GEMINI_API_KEY)}`
-  const response = await fetch(url, {
-    method: 'POST',
-    signal,
-    headers: {
-      'Content-Type': 'application/json',
-      'x-goog-api-key': GEMINI_API_KEY,
-    },
-    body: JSON.stringify({
-      instances: [{ prompt }],
-      parameters: { sampleCount: 1, aspectRatio },
-    }),
+  const bodyJson = JSON.stringify({
+    instances: [{ prompt }],
+    parameters: { sampleCount: 1, aspectRatio },
   })
 
-  const rawText = await response.text()
-  let data: unknown
-  try {
-    data = JSON.parse(rawText) as unknown
-  } catch {
-    data = null
+  let lastErr: Error | null = null
+
+  for (let attempt = 0; attempt < GEMINI_IMAGE_HTTP_RETRY_MAX; attempt++) {
+    const response = await fetch(url, {
+      method: 'POST',
+      signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': GEMINI_API_KEY,
+      },
+      body: bodyJson,
+    })
+
+    const rawText = await response.text()
+    let data: unknown
+    try {
+      data = JSON.parse(rawText) as unknown
+    } catch {
+      data = null
+    }
+
+    if (!response.ok) {
+      const detail =
+        data && typeof data === 'object' && 'error' in data
+          ? JSON.stringify((data as { error?: unknown }).error)
+          : rawText.slice(0, 400)
+      lastErr = new Error(`Imagen (${modelId}) ${response.status}: ${detail}`)
+      if (isTransientGeminiHttpStatus(response.status) && attempt < GEMINI_IMAGE_HTTP_RETRY_MAX - 1) {
+        await sleep(
+          GEMINI_TEXT_RETRY_BASE_MS * 2 ** attempt + Math.floor(Math.random() * 400),
+        )
+        continue
+      }
+      throw lastErr
+    }
+
+    if (data === null || (typeof data === 'object' && Object.keys(data as object).length === 0)) {
+      lastErr = new Error(
+        `Imagen (${modelId}): resposta vazia {} (filtro de segurança ou cota; tente prompt mais curto)`,
+      )
+      if (attempt < GEMINI_IMAGE_HTTP_RETRY_MAX - 1) {
+        await sleep(GEMINI_TEXT_RETRY_BASE_MS * 2 ** attempt)
+        continue
+      }
+      throw lastErr
+    }
+
+    const preds =
+      data && typeof data === 'object' && Array.isArray((data as { predictions?: unknown }).predictions)
+        ? ((data as { predictions: unknown[] }).predictions)
+        : null
+    if (preds && preds.length === 0) {
+      lastErr = new Error(`Imagen (${modelId}): predictions vazio`)
+      if (attempt < GEMINI_IMAGE_HTTP_RETRY_MAX - 1) {
+        await sleep(GEMINI_TEXT_RETRY_BASE_MS * 2 ** attempt)
+        continue
+      }
+      throw lastErr
+    }
+
+    const base64 = extractImagenBase64(data)
+    if (!base64) {
+      lastErr = new Error(`Imagen (${modelId}): resposta sem imagem em base64`)
+      if (attempt < GEMINI_IMAGE_HTTP_RETRY_MAX - 1) {
+        await sleep(GEMINI_TEXT_RETRY_BASE_MS * 2 ** attempt)
+        continue
+      }
+      throw lastErr
+    }
+
+    return `data:image/png;base64,${base64}`
   }
 
-  if (!response.ok) {
-    const detail =
-      data && typeof data === 'object' && 'error' in data
-        ? JSON.stringify((data as { error?: unknown }).error)
-        : rawText.slice(0, 400)
-    throw new Error(`Imagen (${modelId}) ${response.status}: ${detail}`)
-  }
-
-  if (data === null || (typeof data === 'object' && Object.keys(data as object).length === 0)) {
-    throw new Error(`Imagen (${modelId}): resposta vazia {} (filtro de segurança ou cota; tente prompt mais curto)`)
-  }
-
-  const preds =
-    data && typeof data === 'object' && Array.isArray((data as { predictions?: unknown }).predictions)
-      ? ((data as { predictions: unknown[] }).predictions)
-      : null
-  if (preds && preds.length === 0) {
-    throw new Error(`Imagen (${modelId}): predictions vazio`)
-  }
-
-  const base64 = extractImagenBase64(data)
-  if (!base64) throw new Error(`Imagen (${modelId}): resposta sem imagem em base64`)
-
-  return `data:image/png;base64,${base64}`
+  throw lastErr ?? new Error(`Imagen (${modelId}): falha após tentativas`)
 }
 
 /** Tenta imagem nativa Gemini (4:5 etc.) com modelos configurados; fallback Imagen `:predict` (4:5 → 3:4). */

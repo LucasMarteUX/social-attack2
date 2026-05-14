@@ -4,7 +4,9 @@ Documento para retomar o trabalho no Cursor/Claude. Não substitui [`CLAUDE.md`]
 
 ## Objetivo alcançado
 
-Separar **geração de texto** (matéria, tom, links como contexto) da **geração visual** (Imagen), evitar colar o markdown inteiro do design system no prompt de imagem, e dar **um prompt criativo por slide** (Gemini texto) antes do Imagen, com sequência narrativa (capa → meio → CTA).
+Separar **geração de texto** (matéria, tom, links como contexto) da **geração visual**, evitar colar o markdown inteiro do design system no prompt de imagem, e dar **um prompt criativo por slide** (Gemini texto) antes da arte, com sequência narrativa (capa → meio → CTA).
+
+**Geração de imagem:** primeiro tenta modelos **nativos** (`generateContent` com `responseModalities` IMAGE, aspect ratio incl. `4:5`), na ordem configurável (`VITE_GEMINI_IMAGE_NATIVE_MODELS`, padrão `gemini-3-pro-image-preview`, `gemini-2.5-flash-image`). Se não houver `inlineData` de imagem ou houver erro, faz **fallback** para **Imagen** (`imagen-4.0-*` via `:predict`; `4:5` mapeia para `3:4`). Texto de slides: **Pro** por defeito com **retries + backoff** e fallback para **Flash** em 503/429; tarefas baratas (extrair tokens do DS, resumo visual) usam **Flash**.
 
 ## Problemas que motivaram as mudanças
 
@@ -17,7 +19,7 @@ Separar **geração de texto** (matéria, tom, links como contexto) da **geraç�
 | Área | Ficheiro | O que faz |
 |------|----------|-----------|
 | Hook slides | [`src/hooks/useCarouselSlides.ts`](../src/hooks/useCarouselSlides.ts) | `aplicarTextoGerado`: `select` por `id` antes do `update` (sem depender de `slides` em memória). `definirPromptGeracao(slideId, prompt)` grava `image_generation_prompt`. |
-| Gemini / IA | [`src/lib/gemini.ts`](../src/lib/gemini.ts) | `gerarConteudoSlides` (só matéria, sem DS no prompt). `extrairSlideStylesDoDesignSystem`, `compactarDesignSystemParaBriefVisual`. `gerarRoteirosNodes` orquestra conteúdo + estilos. **`montarPromptImagemSlide`**: com `referenceImageUrls` usa **visão multimodal** (mesmas imagens do DS) para instruções de layout fiel; senão texto + `referenceDescription`. **`gerarSlideCompleto`**: `narrativaVisual` + bloco **FIDELIDADE_AO_DESIGN_SYSTEM** quando há análise de refs. **`analisarReferenciasVisuais`**: saída estruturada (TIPOGRAFIA, ZONAS_DE_LAYOUT, HIERARQUIA_VISUAL, PALETA, …). |
+| Gemini / IA | [`src/lib/gemini.ts`](../src/lib/gemini.ts) | Modelos: `VITE_GEMINI_TEXT_MODEL_QUALITY` (padrão `gemini-2.5-pro`), `VITE_GEMINI_TEXT_MODEL_FAST` (padrão `gemini-2.5-flash`); retries: `VITE_GEMINI_TEXT_RETRIES`, `VITE_GEMINI_TEXT_RETRY_BASE_MS`; imagem: `VITE_GEMINI_IMAGE_RETRIES`. `gerarConteudoSlides` (matéria + regras anti-alucinação). `extrairSlideStylesDoDesignSystem`, `compactarDesignSystemParaBriefVisual`. `gerarRoteirosNodes` orquestra conteúdo + estilos. **`montarPromptImagemSlide`**: com `referenceImageUrls` usa visão multimodal. **`gerarSlideCompleto`**: `narrativaVisual` + consistência de template. **`generateSlideImage`**: nativo Gemini → Imagen. **`analisarReferenciasVisuais`**: saída estruturada (TIPOGRAFIA, ZONAS_DE_LAYOUT, …). |
 | Workspace | [`src/pages/WorkspacePage.tsx`](../src/pages/WorkspacePage.tsx) | `designSystemRefImageUrls` via `useMemo` (carrossel + DS). Passa `referenceImageUrls` a `gerarImagensEmBackground` e ao modal. |
 | Modal imagem | [`src/components/modals/GenerateImageModal.tsx`](../src/components/modals/GenerateImageModal.tsx) | `fullSlide.referenceImageUrls` repassado a `montarPromptImagemSlide`. |
 | Constantes | [`src/data/mock.ts`](../src/data/mock.ts) | `PLACEHOLDER_TEXTO_SLIDE_GERANDO`. |
@@ -40,6 +42,7 @@ flowchart TD
   F -->|sim| G[Por slide: montarPromptImagemSlide]
   G --> H[definirPromptGeracao]
   H --> I[gerarSlideCompleto + narrativaVisual]
+  I --> J[generateSlideImage: nativo 4:5 ou Imagen]
 ```
 
 ## O que ficou de fora / follow-up (plano original)
