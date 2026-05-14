@@ -16,15 +16,15 @@ export default function NavItem({ to, icon, label, onClick, end }: NavItemProps)
       onClick={onClick}
       end={end}
       className={({ isActive }) =>
-        `flex items-center gap-3 px-3 py-2 rounded-lg text-body-md font-medium transition-colors ${
+        `flex items-center gap-3 px-3 py-2 rounded-xl text-body-sm font-medium transition-colors tracking-tight ${
           isActive
-            ? 'bg-line/[0.08] text-ink'
-            : 'text-ink-muted hover:bg-line/[0.04] hover:text-ink'
+            ? 'bg-accent/[0.12] text-accent border border-accent/15'
+            : 'text-ink-muted border border-transparent hover:bg-line/[0.05] hover:text-ink'
         }`
       }
     >
-      {icon}
-      {label}
+      <span className="shrink-0 opacity-90 [&>svg]:shrink-0">{icon}</span>
+      <span className="truncate">{label}</span>
     </NavLink>
   )
 }
