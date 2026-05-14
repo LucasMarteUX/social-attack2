@@ -1,6 +1,6 @@
 # Continuidade: fluxo de carrossel (conteúdo → imagem) e prompts por slide
 
-Documento para retomar o trabalho no Cursor/Claude. Não substitui [`CLAUDE.md`](../CLAUDE.md).
+Documento para retomar o trabalho no Cursor/Claude. Não substitui [`CLAUDE.md`](../CLAUDE.md). Para um guia pedagógico (alunos), ver também [**Prompt para correção**](Prompt-para-correcao.md).
 
 ## Objetivo alcançado
 
