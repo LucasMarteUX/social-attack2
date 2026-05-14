@@ -1,4 +1,4 @@
-import { useState, useEffect, type ChangeEvent } from 'react'
+import { useState, useEffect, useRef, type ChangeEvent } from 'react'
 import { Upload, X, ImageIcon } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Input from '../ui/Input'
@@ -56,6 +56,7 @@ export default function DesignSystemModal({ open, onClose, onSave, inicial }: Pr
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (inicial) {
@@ -141,6 +142,7 @@ export default function DesignSystemModal({ open, onClose, onSave, inicial }: Pr
               </label>
               <p className="text-[11px] text-neutral-400 mt-0.5">
                 Imagens para orientar estilo na geração (cores, ritmo, hierarquia). Não serão copiadas literalmente.
+                Em celulares, use o botão abaixo para abrir a galeria — é mais confiável dentro do modal.
               </p>
             </div>
           </div>
@@ -176,11 +178,22 @@ export default function DesignSystemModal({ open, onClose, onSave, inicial }: Pr
             </ul>
           )}
 
-          <label className="flex items-center justify-center gap-2 py-2 rounded-lg border border-dashed border-neutral-200 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 cursor-pointer transition-colors">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.heic,.heif"
+            multiple
+            className="hidden"
+            onChange={handleFiles}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center justify-center gap-2 py-2.5 rounded-lg border border-dashed border-neutral-200 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 cursor-pointer transition-colors w-full"
+          >
             <Upload size={14} />
-            Adicionar imagens de referência
-            <input type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} />
-          </label>
+            Escolher imagens de referência
+          </button>
         </div>
 
         <div className="flex justify-end gap-3 pt-2 border-t border-neutral-100">

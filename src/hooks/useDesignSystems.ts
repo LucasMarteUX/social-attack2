@@ -37,10 +37,16 @@ export function useDesignSystems() {
   useEffect(() => { carregar() }, [carregar])
 
   async function criar(dados: Omit<DesignSystem, 'id' | 'created_at' | 'updated_at'>) {
+    const payload = {
+      name: dados.name,
+      markdown: dados.markdown ?? '',
+      is_active: dados.is_active ?? true,
+      reference_image_urls: dados.reference_image_urls ?? [],
+    }
     const { data, error } = await supabase
       .from('design_systems')
-      .insert(dados)
-      .select()
+      .insert(payload)
+      .select('id, name, markdown, is_active, reference_image_urls, created_at, updated_at')
       .single()
     if (error) throw new Error(error.message)
     setDesignSystems((prev) => [data as DesignSystem, ...prev])
@@ -52,7 +58,7 @@ export function useDesignSystems() {
       .from('design_systems')
       .update(dados)
       .eq('id', id)
-      .select()
+      .select('id, name, markdown, is_active, reference_image_urls, created_at, updated_at')
       .single()
     if (error) throw new Error(error.message)
     setDesignSystems((prev) => prev.map((ds) => (ds.id === id ? (data as DesignSystem) : ds)))

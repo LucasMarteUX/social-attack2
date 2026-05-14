@@ -310,7 +310,16 @@ export async function analisarReferenciasVisuais(imageUrls: string[]): Promise<s
       parts: [
         ...validParts,
         {
-          text: 'Analise estas imagens apenas como referência de estilo visual para guiar um novo layout. Não copie logos, marcas, fotos identificáveis nem composições literais. Em até 100 palavras, descreva: paleta, hierarquia tipográfica, espaçamento, textura/fundo, mood e elementos decorativos genéricos — útil para um prompt de geração de imagem.',
+          text: `Analise estas imagens só como referência de ESTILO para novos layouts de carrossel Instagram (4:5). Não copie logos, marcas, fotos reconhecíveis, texto literal nem layout pixel a pixel.
+
+Extraia um PADRÃO REPETÍVEL que deva valer para TODOS os slides do mesmo carrossel:
+- Paleta (fundo, texto, acentos) e contraste
+- Hierarquia tipográfica (pesos, tamanhos relativos, espaçamento entre linhas)
+- Ritmo de quadro: margens seguras, grid implícito, alinhamentos predominantes
+- Tratamento visual: foto cheia vs tipografia dominante vs ilustração; uso de sombras, cantos, linhas ou formas decorativas GENÉRICAS
+- Como imaginar capa vs slide de conteúdo vs CTA mantendo a mesma “família” visual
+
+Responda em português, até ~180 palavras, em bullets curtos quando ajudar a clareza. Última linha: “Regras para manter consistência entre slides: …”.`,
         },
       ],
     }],
@@ -364,7 +373,7 @@ export async function gerarSlideCompleto(params: {
     : ''
 
   const refNote = referenceDescription.trim()
-    ? `\nESTILO DE REFERÊNCIA (inspire-se na estética geral; não reproduza logos, marcas nem layouts idênticos às imagens de referência):\n${referenceDescription}\n`
+    ? `\nPADRÃO DAS REFERÊNCIAS VISUAIS (mantenha este sistema visual em TODOS os slides deste carrossel — mesma família tipográfica, margens, densidade e linguagem gráfica; não reproduza logos/marcas nem composições idênticas às fotos de referência):\n${referenceDescription}\n`
     : ''
 
   const ctaColors = isCTA
@@ -388,6 +397,7 @@ REQUISITOS:
 - Design editorial de alto nível, moderno e profissional
 - Todos os textos acima DEVEM estar visíveis e legíveis na imagem
 - Tipografia limpa, hierarquia visual clara
+- CONSISTÊNCIA: este slide deve parecer da mesma série que os demais do carrossel (mesmo vocabulário formal de layout das referências + design system)
 - Sem marcas d'água, sem logos externos, sem bordas desnecessárias
 - Estilo Instagram/LinkedIn carrossel profissional`
 

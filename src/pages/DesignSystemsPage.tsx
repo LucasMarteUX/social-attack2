@@ -11,17 +11,40 @@ import type { DesignSystem } from '../data/mock'
 async function uploadReferenciasDesignSystem(dsId: string, files: File[]): Promise<string[]> {
   const urls: string[] = []
   for (const file of files) {
-    const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg'
-    const path = `${dsId}/${crypto.randomUUID()}.${ext}`
+    const ext = extensaoUpload(file)
+    const path = `${dsId}/${novoIdArquivo()}.${ext}`
     const { data, error } = await supabase.storage.from('design-system-references').upload(path, file, {
       upsert: true,
-      contentType: file.type || 'image/jpeg',
+      cacheControl: '3600',
+      contentType: file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg',
     })
-    if (error) throw new Error(error.message)
+    if (error) throw new Error(`Upload: ${error.message}`)
+    if (!data?.path) throw new Error('Upload concluído sem caminho do arquivo.')
     const { data: pub } = supabase.storage.from('design-system-references').getPublicUrl(data.path)
     urls.push(pub.publicUrl)
   }
   return urls
+}
+
+function extensaoUpload(file: File): string {
+  const mime = (file.type ?? '').toLowerCase()
+  if (mime.includes('png')) return 'png'
+  if (mime.includes('webp')) return 'webp'
+  if (mime.includes('gif')) return 'gif'
+  if (mime.includes('heic')) return 'heic'
+  if (mime.includes('heif')) return 'heif'
+  if (mime.includes('jpeg') || mime === 'image/jpg') return 'jpg'
+  const part = file.name.includes('.') ? file.name.split('.').pop() ?? '' : ''
+  const safe = part.toLowerCase().replace(/[^a-z0-9]/g, '')
+  if (safe.length > 0 && safe.length <= 5) return safe
+  return 'jpg'
+}
+
+function novoIdArquivo(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`
 }
 
 export default function DesignSystemsPage() {
