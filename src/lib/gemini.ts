@@ -123,6 +123,86 @@ Responda APENAS com JSON válido no formato: [{"titulo": "...", "descricao": "..
   return extrairJSON<IdeaSuggestion[]>(text, true)
 }
 
+export interface NodeSlide {
+  slide_number: number
+  slide_type: 'cover' | 'body' | 'cta'
+  tag_text?: string
+  headline?: string
+  subheadline?: string
+  body_paragraph?: string
+  cta_message?: string
+}
+
+export interface NodeCarouselScript {
+  slides: NodeSlide[]
+}
+
+export async function gerarRoteirosNodes(params: {
+  titulo: string
+  descricao: string
+  referencesUrls: string[]
+  referencesText: string
+  tomNome: string
+  tomDescricao: string
+  designSystemName: string
+  totalSlides: number
+}): Promise<NodeCarouselScript> {
+  const { titulo, descricao, referencesUrls, referencesText, tomNome, tomDescricao, designSystemName, totalSlides } = params
+  const hasUrls = referencesUrls.length > 0
+
+  const refBlock = [
+    referencesText ? `Contexto adicional:\n${referencesText}` : '',
+    hasUrls ? `Links de referência:\n${referencesUrls.map((u) => `- ${u}`).join('\n')}` : '',
+  ].filter(Boolean).join('\n\n')
+
+  const prompt = `Você é um especialista em criação de conteúdo para Instagram.
+Crie um carrossel com exatamente ${totalSlides} slides sobre: "${titulo}".
+Descrição: ${descricao || 'não fornecida'}.
+Tom de voz: ${tomNome}${tomDescricao ? ` — ${tomDescricao}` : ''}.
+Design System: ${designSystemName}.
+${refBlock ? `\n${refBlock}\n` : ''}
+ESTRUTURA OBRIGATÓRIA:
+- Slide 1: tipo "cover" — tag (categoria/tema em 2-3 palavras), headline (título impactante), subheadline (frase complementar curta)
+- Slides 2 até ${totalSlides - 1}: tipo "body" — headline (ponto principal) + body_paragraph (desenvolvimento, 2-3 linhas)
+- Slide ${totalSlides}: tipo "cta" — cta_message (chamada para seguir o perfil ou salvar o post)
+
+Regras:
+- Textos diretos, sem prolixidade
+- Se há URLs de referência, pesquise e use o conteúdo dessas fontes
+- Responda APENAS com JSON válido, sem texto extra
+
+Formato:
+{
+  "slides": [
+    { "slide_number": 1, "slide_type": "cover", "tag_text": "...", "headline": "...", "subheadline": "..." },
+    { "slide_number": 2, "slide_type": "body", "headline": "...", "body_paragraph": "..." },
+    { "slide_number": ${totalSlides}, "slide_type": "cta", "cta_message": "..." }
+  ]
+}`
+
+  const text = await callGemini(prompt, hasUrls)
+  return extrairJSON<NodeCarouselScript>(text, false)
+}
+
+export async function regenerarCampoSlide(params: {
+  slideType: 'cover' | 'body' | 'cta'
+  campo: string
+  textoAtual: string
+  tomNome: string
+  instrucoes?: string
+}): Promise<string> {
+  const { slideType, campo, textoAtual, tomNome, instrucoes } = params
+  const prompt = `Você é um especialista em conteúdo para Instagram.
+Tom de voz: ${tomNome}.
+Tipo de slide: ${slideType}.
+Campo a regenerar: ${campo}.
+Texto atual: "${textoAtual}".
+${instrucoes ? `Instruções adicionais: ${instrucoes}` : ''}
+Gere apenas o novo texto para o campo "${campo}". Responda SOMENTE com o texto, sem aspas, sem formatação extra.`
+
+  return callGemini(prompt, false)
+}
+
 export async function generateSlideImage(slideText: string): Promise<string> {
   const prompt = `${slideText}. Estilo: flat illustration, paleta pastel suave, sem texto na imagem, fundo limpo e minimalista. Proporção 1:1.`
 

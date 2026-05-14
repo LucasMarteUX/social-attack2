@@ -72,6 +72,97 @@ export interface TomDeVoz {
   criado_em: string
 }
 
+export interface DesignSystem {
+  id: string
+  name: string
+  description: string | null
+  is_active: boolean
+  cover_tag_font_size: number
+  cover_tag_color: string
+  cover_headline_font_size: number
+  cover_headline_weight: string
+  cover_headline_font_family: string
+  cover_subheadline_font_size: number
+  cover_subheadline_color: string
+  body_headline_font_size: number
+  body_headline_weight: string
+  body_paragraph_font_size: number
+  body_paragraph_color: string
+  cta_message_font_size: number
+  cta_message_weight: string
+  cta_background_color: string
+  cta_text_color: string
+  global_background_color: string
+  global_accent_color: string
+  global_font_family: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Carousel {
+  id: string
+  title: string
+  description: string | null
+  references_urls: string[]
+  references_text: string | null
+  total_slides: number
+  design_system_id: string | null
+  tone_of_voice_id: string | null
+  status: 'draft' | 'generating' | 'ready' | 'published'
+  version: number
+  parent_carousel_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type SlideType = 'cover' | 'body' | 'cta'
+export type ImageSource = 'none' | 'uploaded' | 'generated'
+
+export interface CarouselSlide {
+  id: string
+  carousel_id: string
+  slide_number: number
+  slide_type: SlideType
+  tag_text: string | null
+  headline: string | null
+  subheadline: string | null
+  body_paragraph: string | null
+  cta_message: string | null
+  original_tag_text: string | null
+  original_headline: string | null
+  original_subheadline: string | null
+  original_body_paragraph: string | null
+  original_cta_message: string | null
+  image_url: string | null
+  image_source: ImageSource
+  image_generation_prompt: string | null
+  is_text_edited: boolean
+  is_image_edited: boolean
+  regenerate_text_count: number
+  regenerate_image_count: number
+  created_at: string
+  updated_at: string
+}
+
+export type SlideActionType =
+  | 'text_manual_edit'
+  | 'text_regenerated'
+  | 'text_reset'
+  | 'image_uploaded'
+  | 'image_generated'
+  | 'image_removed'
+
+export interface SlideEditHistory {
+  id: string
+  slide_id: string
+  action_type: SlideActionType
+  field_changed: string | null
+  old_value: string | null
+  new_value: string | null
+  prompt_used: string | null
+  created_at: string
+}
+
 // ─── Categorias ───────────────────────────────────────────────────────────────
 
 export const mockCategorias: Categoria[] = [

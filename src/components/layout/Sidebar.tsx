@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderOpen, Palette, CalendarDays, CheckSquare, Zap, Mic2 } from 'lucide-react'
+import { LayoutDashboard, FolderOpen, Palette, CalendarDays, CheckSquare, Zap, Mic2, Workflow, Layers } from 'lucide-react'
 import NavItem from './NavItem'
 
 interface SidebarProps {
@@ -22,6 +22,12 @@ export default function Sidebar({ onNavClick }: SidebarProps) {
       {/* Nav */}
       <nav className="flex flex-col gap-1">
         <NavItem to="/" icon={<LayoutDashboard size={17} />} label="Dashboard" onClick={onNavClick} end />
+
+        <p className="px-3 mt-5 mb-2 text-[10px] font-bold text-neutral-400 uppercase tracking-[0.12em]">
+          Nodes
+        </p>
+        <NavItem to="/workspace" icon={<Workflow size={17} />} label="Workspace" onClick={onNavClick} />
+        <NavItem to="/design-systems" icon={<Layers size={17} />} label="Design Systems" onClick={onNavClick} />
 
         <p className="px-3 mt-5 mb-2 text-[10px] font-bold text-neutral-400 uppercase tracking-[0.12em]">
           Conteúdo
