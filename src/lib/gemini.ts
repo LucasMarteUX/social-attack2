@@ -816,9 +816,14 @@ async function tryGeminiNativeImage(
   prompt: string,
   aspectRatio: SlideImageAspectRatio,
   signal: AbortSignal,
+  referenceInlineParts: Array<{ inlineData: { mimeType: string; data: string } }> = [],
 ): Promise<string | null> {
+  const userParts: Array<
+    { text: string } | { inlineData: { mimeType: string; data: string } }
+  > = [...referenceInlineParts, { text: prompt }]
+
   const bodyJson = JSON.stringify({
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    contents: [{ role: 'user', parts: userParts }],
     generationConfig: {
       responseModalities: ['TEXT', 'IMAGE'],
       imageConfig: { aspectRatio },
@@ -991,14 +996,25 @@ async function predictImagenModel(
   throw lastErr ?? new Error(`Imagen (${modelId}): falha após tentativas`)
 }
 
+export type GeminiImageInlinePart = { inlineData: { mimeType: string; data: string } }
+
+export interface GenerateSlideImageOptions {
+  aspectRatio?: SlideImageAspectRatio
+  /** Enviadas antes do texto no `generateContent` nativo (logo, piloto, mood). Imagen só recebe texto — usa prefixo automático. */
+  referenceInlineParts?: GeminiImageInlinePart[]
+}
+
 /** Tenta imagem nativa Gemini (4:5 etc.) com modelos configurados; fallback Imagen `:predict` (4:5 → 3:4). */
 export async function generateSlideImage(
   prompt: string,
-  aspectRatio: SlideImageAspectRatio = '4:5'
+  options: GenerateSlideImageOptions = {},
 ): Promise<string> {
   if (!GEMINI_API_KEY?.trim()) {
     throw new Error('Chave Gemini ausente: defina VITE_GEMINI_API_KEY')
   }
+
+  const aspectRatio = options.aspectRatio ?? '4:5'
+  const referenceInlineParts = options.referenceInlineParts ?? []
 
   const controller = new AbortController()
   const timeoutMs = 120_000
@@ -1006,8 +1022,18 @@ export async function generateSlideImage(
 
   let lastErr: Error | null = null
   try {
-    const native = await tryGeminiNativeImage(prompt, aspectRatio, controller.signal)
+    const native = await tryGeminiNativeImage(
+      prompt,
+      aspectRatio,
+      controller.signal,
+      referenceInlineParts,
+    )
     if (native) return native
+
+    const imagenVisualHint =
+      referenceInlineParts.length > 0
+        ? 'O utilizador anexou imagem(ns) de referência (logo/piloto/mood). Este modelo só aceita texto: incorporar estilo, cores e ritmo visual descritos no prompt principal na composição do fundo e da arte.\n\n'
+        : ''
 
     const promptVariants = [prompt]
     const short = simplifyImagenPrompt(prompt)
@@ -1018,7 +1044,8 @@ export async function generateSlideImage(
     for (const modelId of IMAGEN_MODEL_IDS) {
       for (const p of promptVariants) {
         try {
-          return await predictImagenModel(modelId, p, imagenAspect, controller.signal)
+          const pFinal = imagenVisualHint ? `${imagenVisualHint}${p}` : p
+          return await predictImagenModel(modelId, pFinal, imagenAspect, controller.signal)
         } catch (e) {
           lastErr = e instanceof Error ? e : new Error(String(e))
         }
@@ -1081,8 +1108,22 @@ export async function gerarSlideCompleto(params: {
   referenceDescription: string
   /** Direção criativa por slide (Gemini); reforça matéria + arco narrativo */
   narrativaVisual?: string
+  /** Piloto visual do utilizador (logo, marca, referência de fundo); multimodal no Gemini nativo */
+  referenceInlineParts?: GeminiImageInlinePart[]
 }): Promise<string> {
-  const { slide, styles: s, visualBrief = '', referenceDescription, narrativaVisual = '' } = params
+  const {
+    slide,
+    styles: s,
+    visualBrief = '',
+    referenceDescription,
+    narrativaVisual = '',
+    referenceInlineParts = [],
+  } = params
+
+  const userPixelsNote =
+    referenceInlineParts.length > 0
+      ? `IMAGENS_ANEXADAS_PELO_UTILIZADOR (${referenceInlineParts.length}): enviadas como pixels antes deste texto — usar como piloto para marca/logo/textura/mood do FUNDO e da arte gráfica. Os TEXTOS OBRIGATÓRIOS abaixo mantêm-se literais na arte.\n\n`
+      : ''
 
   const typeLabel = slide.slide_type === 'cover' ? 'Capa' : slide.slide_type === 'body' ? 'Conteúdo' : 'CTA'
   const isCTA = slide.slide_type === 'cta'
@@ -1133,7 +1174,7 @@ export async function gerarSlideCompleto(params: {
 
   const prompt = `Post estático para Instagram carrossel. UM ÚNICO quadro vertical ~4:5 (~1080x1350). Slide ${slide.slide_number}, tipo "${typeLabel}".
 
-CONTEÚDO VISUAL: ilustre o TEMA pelos TEXTOS abaixo — não mostre documentação, guias internos nem interfaces de ferramenta.
+${userPixelsNote}CONTEÚDO VISUAL: ilustre o TEMA pelos TEXTOS abaixo — não mostre documentação, guias internos nem interfaces de ferramenta.
 ${narrativaNote}${dsFidelity}
 CORES E TOKENS (obrigatório):
 - Cor primária/destaque: ${s.primaryColor}
@@ -1157,5 +1198,7 @@ REQUISITOS:
 - Sem marcas d'água; sem logos de terceiros inventados
 - Este slide deve combinar visualmente com os outros do mesmo carrossel`
 
-  return generateSlideImage(prompt)
+  return generateSlideImage(prompt, {
+    referenceInlineParts: referenceInlineParts.length ? referenceInlineParts : undefined,
+  })
 }
