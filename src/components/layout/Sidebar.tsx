@@ -1,11 +1,14 @@
-import { LayoutDashboard, FolderOpen, Palette, CalendarDays, CheckSquare, Zap, Mic2, Workflow, Layers } from 'lucide-react'
+import { LayoutDashboard, FolderOpen, Palette, CalendarDays, CheckSquare, Zap, Mic2, Workflow, Layers, LogOut } from 'lucide-react'
 import NavItem from './NavItem'
+import { useAuth } from '../../hooks/useAuth'
 
 interface SidebarProps {
   onNavClick?: () => void
 }
 
 export default function Sidebar({ onNavClick }: SidebarProps) {
+  const { user, signOut } = useAuth()
+
   return (
     <div className="flex flex-col h-full w-64 bg-white border-r border-neutral-100 px-4 py-6">
       {/* Logo */}
@@ -43,16 +46,23 @@ export default function Sidebar({ onNavClick }: SidebarProps) {
         <NavItem to="/todos" icon={<CheckSquare size={17} />} label="To-Do" onClick={onNavClick} />
       </nav>
 
-      {/* Footer card */}
-      <div className="mt-auto rounded-2xl bg-lavender-gradient p-4">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-purple-800 mb-1">
-          Plano Free
-        </p>
-        <p className="text-label text-purple-900/70 leading-snug mb-3">
-          Você usou 3 de 10 gerações deste mês.
-        </p>
-        <button className="text-label font-semibold text-purple-800 hover:text-purple-900 transition-colors">
-          Fazer upgrade →
+      {/* Footer — user + logout */}
+      <div className="mt-auto border-t border-neutral-100 pt-4 flex items-center gap-3 px-1">
+        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+          <span className="text-[11px] font-bold text-purple-700 uppercase">
+            {user?.email?.[0] ?? 'A'}
+          </span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-semibold text-neutral-700 truncate">{user?.email}</p>
+          <p className="text-[10px] text-neutral-400">Administrador</p>
+        </div>
+        <button
+          onClick={signOut}
+          title="Sair"
+          className="text-neutral-400 hover:text-red-500 transition-colors flex-shrink-0"
+        >
+          <LogOut size={15} />
         </button>
       </div>
     </div>
