@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Copy, Trash2, Palette, FileText } from 'lucide-react'
+import { Plus, Pencil, Copy, Trash2, Palette, FileText, ImageIcon } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import Spinner from '../components/ui/Spinner'
@@ -54,8 +54,22 @@ export default function DesignSystemsPage() {
   const [excluindo, setExcluindo] = useState<DesignSystem | null>(null)
 
   function handleNovoOuEditar(ds?: DesignSystem) {
-    setEditando(ds ?? null)
+    if (ds) {
+      const sync = designSystems.find((x) => x.id === ds.id)
+      setEditando(sync ?? ds)
+    } else {
+      setEditando(null)
+    }
     setModalOpen(true)
+  }
+
+  async function anexarReferenciasAoEditando(files: File[]): Promise<string[]> {
+    if (!editando) throw new Error('Design system não encontrado.')
+    const uploaded = await uploadReferenciasDesignSystem(editando.id, files)
+    const merged = [...(editando.reference_image_urls ?? []), ...uploaded]
+    const atualizado = await editar(editando.id, { reference_image_urls: merged })
+    setEditando(atualizado)
+    return uploaded
   }
 
   async function handleSave(
@@ -119,6 +133,7 @@ export default function DesignSystemsPage() {
         onClose={() => { setModalOpen(false); setEditando(null) }}
         onSave={handleSave}
         inicial={editando}
+        onAnexarReferencias={editando ? anexarReferenciasAoEditando : undefined}
       />
 
       <Modal open={!!excluindo} onClose={() => setExcluindo(null)} title="Excluir design system">
@@ -183,6 +198,17 @@ function DesignSystemCard({ ds, onEdit, onDuplicate, onDelete }: CardProps) {
         <p className="text-[11px] text-neutral-400">
           {ds.markdown ? `${ds.markdown.split('\n').filter(Boolean).length} linhas de documentação` : 'Sem conteúdo'}
         </p>
+        {(ds.reference_image_urls?.length ?? 0) > 0 && (
+          <div className="mt-3 flex items-center gap-2">
+            <ImageIcon size={12} className="text-purple-400 flex-shrink-0" />
+            <div className="flex gap-1 overflow-hidden">
+              {ds.reference_image_urls.slice(0, 5).map((url) => (
+                <img key={url} src={url} alt="" className="w-9 h-9 rounded-md object-cover border border-neutral-100 flex-shrink-0" />
+              ))}
+            </div>
+            <span className="text-[10px] text-neutral-400 whitespace-nowrap">{ds.reference_image_urls.length} ref.</span>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -3,6 +3,7 @@ import { X, ImageIcon } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Input from '../ui/Input'
 import Button from '../ui/Button'
+import Spinner from '../ui/Spinner'
 import type { DesignSystem } from '../../data/mock'
 
 type DesignSystemDraft = Omit<DesignSystem, 'id' | 'created_at' | 'updated_at'>
@@ -49,12 +50,15 @@ interface Props {
   onClose: () => void
   onSave: (dados: DesignSystemDraft, options?: { novosArquivosReferencia?: File[] }) => Promise<void>
   inicial?: DesignSystem | null
+  /** Quando está editando um DS já salvo: envia ao Storage + grava URLs assim que o usuário escolhe arquivos */
+  onAnexarReferencias?: (files: File[]) => Promise<string[]>
 }
 
-export default function DesignSystemModal({ open, onClose, onSave, inicial }: Props) {
+export default function DesignSystemModal({ open, onClose, onSave, inicial, onAnexarReferencias }: Props) {
   const [dados, setDados] = useState<DesignSystemDraft>(DEFAULT)
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [saving, setSaving] = useState(false)
+  const [enviandoRefs, setEnviandoRefs] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
   useEffect(() => {
@@ -92,11 +96,27 @@ export default function DesignSystemModal({ open, onClose, onSave, inicial }: Pr
     }))
   }
 
-  function handleFiles(e: ChangeEvent<HTMLInputElement>) {
+  async function handleFiles(e: ChangeEvent<HTMLInputElement>) {
     const list = e.target.files
     if (!list?.length) return
-    setPendingFiles((prev) => [...prev, ...Array.from(list)])
+    const files = Array.from(list)
     e.target.value = ''
+
+    if (onAnexarReferencias && inicial?.id) {
+      setEnviandoRefs(true)
+      setErro(null)
+      try {
+        const novasUrls = await onAnexarReferencias(files)
+        setDados((p) => ({ ...p, reference_image_urls: [...p.reference_image_urls, ...novasUrls] }))
+      } catch (err) {
+        setErro(err instanceof Error ? err.message : 'Falha ao enviar imagens')
+      } finally {
+        setEnviandoRefs(false)
+      }
+      return
+    }
+
+    setPendingFiles((prev) => [...prev, ...files])
   }
 
   function removerPending(i: number) {
@@ -141,7 +161,9 @@ export default function DesignSystemModal({ open, onClose, onSave, inicial }: Pr
               </label>
               <p className="text-[11px] text-neutral-400 mt-0.5">
                 Imagens para orientar estilo na geração (cores, ritmo, hierarquia). Não serão copiadas literalmente.
-                Use o controle nativo abaixo — evita bloqueios do navegador dentro da página.
+                {inicial?.id
+                  ? ' Ao editar: o envio para o armazenamento ocorre assim que você escolhe os arquivos.'
+                  : ' Novo design system: os arquivos escolhidos sobem ao clicar em «Criar design system».'}
               </p>
             </div>
           </div>
@@ -181,14 +203,28 @@ export default function DesignSystemModal({ open, onClose, onSave, inicial }: Pr
             type="file"
             accept="image/*"
             multiple
-            onChange={handleFiles}
-            className="block w-full text-[11px] text-neutral-600
+            disabled={enviandoRefs}
+            onChange={(e) => void handleFiles(e)}
+            className="block w-full text-[11px] text-neutral-600 disabled:opacity-50
               file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-dashed file:border-neutral-300
               file:bg-neutral-50 file:px-3 file:py-2 file:text-[11px] file:font-medium file:text-neutral-700
               hover:file:bg-neutral-100 file:inline-flex file:items-center"
           />
-          {pendingFiles.length === 0 && (
-            <p className="text-[10px] text-neutral-400">Nenhum arquivo novo selecionado. Depois de escolher, salve o design system.</p>
+          {enviandoRefs && (
+            <div className="flex items-center gap-2 text-[11px] text-purple-700 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">
+              <Spinner size="sm" />
+              Enviando imagens para o armazenamento…
+            </div>
+          )}
+          {!inicial?.id && pendingFiles.length === 0 && (
+            <p className="text-[10px] text-neutral-400">
+              Nenhum arquivo na fila. Escolha imagens e depois clique em «Criar design system» para gravar e enviar.
+            </p>
+          )}
+          {!inicial?.id && pendingFiles.length > 0 && (
+            <p className="text-[11px] font-medium text-purple-800 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">
+              {pendingFiles.length} arquivo(s) na fila — serão enviados ao criar o design system.
+            </p>
           )}
         </div>
 

@@ -36,10 +36,12 @@ export default function Button({
   loading,
   className = '',
   disabled,
+  type = 'button',
   ...props
 }: ButtonProps) {
   return (
     <button
+      type={type}
       className={`inline-flex items-center justify-center gap-2 rounded-full font-semibold tracking-tight transition-all cursor-pointer ${variantClasses[variant]} ${sizeClasses[size]} ${className}`}
       disabled={disabled || loading}
       {...props}
