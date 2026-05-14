@@ -133,17 +133,28 @@ export default function SlideNode({ data }: Props) {
             />
           )}
           {slide.image_url && !imageGenerating && (
-            <a
-              href={slide.image_url}
-              download={`slide-${slide.slide_number}.jpg`}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
               title="Baixar imagem"
-              onClick={(e) => e.stopPropagation()}
+              onClick={async (e) => {
+                e.stopPropagation()
+                try {
+                  const res = await fetch(slide.image_url!)
+                  const blob = await res.blob()
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `slide-${slide.slide_number}.jpg`
+                  a.click()
+                  URL.revokeObjectURL(url)
+                } catch {
+                  window.open(slide.image_url!, '_blank')
+                }
+              }}
               className="absolute top-1.5 right-1.5 z-20 w-6 h-6 rounded-md bg-black/50 hover:bg-black/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
             >
               <Download size={11} className="text-white" />
-            </a>
+            </button>
           )}
           {imageGenerating && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60">

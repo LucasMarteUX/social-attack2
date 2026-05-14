@@ -13,6 +13,7 @@ import {
   type Node,
   type Edge,
   type Connection,
+  type ReactFlowInstance,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import MainNode, { type MainNodeData } from '../components/nodes/MainNode'
@@ -48,7 +49,7 @@ const MAIN_NODE_X = 0   // centro de referência horizontal
 const MAIN_NODE_Y = 0
 const MAIN_NODE_WIDTH = 380
 const SLIDE_NODE_WIDTH = 300
-const SLIDE_OFFSET_Y = 920  // gap seguro acima dos slides (MainNode ~650px + folga)
+const SLIDE_OFFSET_Y = 1200 // espaço generoso entre node principal e slides gerados
 const SLIDE_GAP_X = 360     // largura do slide + margem lateral
 
 const STATUS_LABELS: Record<string, string> = {
@@ -106,6 +107,17 @@ function MiniMapNodePreview({ x, y, width, height, id }: { x: number; y: number;
   const nodes = useNodes<Node>()
   const node = nodes.find((n) => n.id === id)
 
+  if (node?.type === 'mainNode') {
+    // Node principal: fundo lavanda com barra roxa no topo
+    const barH = Math.max(2, Math.round(height * 0.08))
+    return (
+      <>
+        <rect x={x} y={y} width={width} height={height} fill="#ede9fe" stroke="#6D28D9" strokeWidth={1} rx={3} />
+        <rect x={x} y={y} width={width} height={barH} fill="#6D28D9" rx={1} />
+      </>
+    )
+  }
+
   if (node?.type === 'slideNode') {
     const data = node.data as unknown as SlideNodeData
     const imgUrl = data?.slide?.image_url
@@ -113,10 +125,16 @@ function MiniMapNodePreview({ x, y, width, height, id }: { x: number; y: number;
     return (
       <>
         <rect x={x} y={y} width={width} height={height} fill={bg} rx={2} />
-        {imgUrl ? (
-          <image href={imgUrl} x={x} y={y} width={width} height={height} preserveAspectRatio="xMidYMid slice" />
-        ) : (
-          <rect x={x} y={y} width={width} height={height} fill={bg} stroke="#6D28D9" strokeWidth={1} rx={2} />
+        {imgUrl && (
+          <image
+            href={imgUrl}
+            x={x}
+            y={y}
+            width={width}
+            height={height}
+            preserveAspectRatio="xMidYMid slice"
+            clipPath={`inset(0)`}
+          />
         )}
       </>
     )
@@ -140,6 +158,7 @@ export default function WorkspacePage() {
   const [, setSlideStyles] = useState<SlideStyles>(DEFAULT_SLIDE_STYLES)
   const slideStylesRef = useRef<SlideStyles>(DEFAULT_SLIDE_STYLES)
   const slidesInitialized = useRef(false)
+  const rfRef = useRef<ReactFlowInstance | null>(null)
   const visualBriefRef = useRef('')
   const visualRefDescRef = useRef('')
 
@@ -658,6 +677,8 @@ export default function WorkspacePage() {
 
     setNodes([mainNode, ...novosNodes])
     setEdges(novosEdges)
+    // Re-fit a view após os nodes serem renderizados
+    setTimeout(() => rfRef.current?.fitView({ padding: 0.25 }), 80)
   }
 
   function buildSlideData(slide: CarouselSlide, estilos: SlideStyles, total: number) {
@@ -882,9 +903,10 @@ export default function WorkspacePage() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         nodeTypes={NODE_TYPES}
+        onInit={(inst) => { rfRef.current = inst }}
         fitView
-        fitViewOptions={{ padding: 0.2 }}
-        minZoom={0.3}
+        fitViewOptions={{ padding: 0.25 }}
+        minZoom={0.2}
         maxZoom={1.5}
       >
         <Background gap={20} size={1} color="#e5e7eb" />
