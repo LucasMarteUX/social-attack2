@@ -3,13 +3,39 @@ import { DEFAULT_SLIDE_STYLES } from '../data/mock'
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY as string
 
-// gemini-2.5-flash: modelo estável para geração de texto (substitui gemini-2.0-flash)
-const GEMINI_TEXT_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
+const GEMINI_TEXT_MODEL_QUALITY =
+  (import.meta.env.VITE_GEMINI_TEXT_MODEL_QUALITY as string | undefined)?.trim() || 'gemini-2.5-pro'
+const GEMINI_TEXT_MODEL_FAST =
+  (import.meta.env.VITE_GEMINI_TEXT_MODEL_FAST as string | undefined)?.trim() || 'gemini-2.5-flash'
+
+type GeminiTextTier = 'quality' | 'fast'
+
+function geminiGenerateContentUrl(modelId: string): string {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`
+}
+
+function parseCommaModels(raw: string | undefined, fallback: readonly string[]): string[] {
+  const list = raw
+    ?.split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+  return list?.length ? list : [...fallback]
+}
+
+/** Nano Banana Pro ≈ gemini-3-pro-image-preview; fallback flash-image. Lista via VITE_GEMINI_IMAGE_NATIVE_MODELS (CSV). */
+const GEMINI_IMAGE_NATIVE_MODEL_IDS = parseCommaModels(
+  import.meta.env.VITE_GEMINI_IMAGE_NATIVE_MODELS as string | undefined,
+  ['gemini-3-pro-image-preview', 'gemini-2.5-flash-image'],
+)
 
 const GEMINI_IMAGE_PREDICT = 'https://generativelanguage.googleapis.com/v1beta/models'
 
 /** Ordem: qualidade → velocidade. Evita imagen-3.x (indisponível em :predict no v1beta). */
 const IMAGEN_MODEL_IDS = ['imagen-4.0-generate-001', 'imagen-4.0-fast-generate-001'] as const
+
+export type SlideImageAspectRatio = '1:1' | '3:4' | '4:3' | '4:5' | '9:16' | '16:9'
+
+type ImagenPredictAspectRatio = '1:1' | '3:4' | '4:3' | '9:16' | '16:9'
 
 const IMAGEN_PROMPT_FALLBACK_MAX = 720
 
@@ -38,10 +64,23 @@ export interface ReferenciaItem {
   nome: string
 }
 
+interface PostGeminiPartsOptions {
+  useSearch?: boolean
+  tier?: GeminiTextTier
+  model?: string
+}
+
 async function postGeminiParts(
   parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }>,
-  useSearch = false
+  options: boolean | PostGeminiPartsOptions = {},
 ): Promise<string> {
+  const opts: PostGeminiPartsOptions =
+    typeof options === 'boolean' ? { useSearch: options } : (options ?? {})
+  const useSearch = !!opts.useSearch
+  const modelId =
+    opts.model?.trim() ||
+    (opts.tier === 'fast' ? GEMINI_TEXT_MODEL_FAST : GEMINI_TEXT_MODEL_QUALITY)
+
   const body: Record<string, unknown> = {
     contents: [{ role: 'user', parts }],
   }
@@ -49,7 +88,7 @@ async function postGeminiParts(
     body.tools = [{ google_search: {} }]
   }
 
-  const response = await fetch(GEMINI_TEXT_URL, {
+  const response = await fetch(geminiGenerateContentUrl(modelId), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -100,8 +139,12 @@ async function postGeminiParts(
   return text
 }
 
-async function callGemini(prompt: string, useSearch = false): Promise<string> {
-  return postGeminiParts([{ text: prompt }], useSearch)
+async function callGemini(
+  prompt: string,
+  useSearch = false,
+  tier: GeminiTextTier = 'quality',
+): Promise<string> {
+  return postGeminiParts([{ text: prompt }], { useSearch, tier })
 }
 
 async function fetchImageUrlsAsInlineParts(
@@ -298,6 +341,27 @@ interface ParsedSlidesOnlyJson {
   slides: NodeSlide[]
 }
 
+function sanitizarCamposNodeSlide(s: NodeSlide): NodeSlide {
+  const limpar = (t: string | undefined): string | undefined => {
+    if (!t?.trim()) return t
+    let out = t
+      .replace(/\bCTA\s*\d+\b/gi, '')
+      .replace(/\bslide\s*\d+\s*$/i, '')
+      .replace(/\(\s*placeholder\s*\)/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim()
+    return out.length ? out : undefined
+  }
+  return {
+    ...s,
+    tag_text: limpar(s.tag_text),
+    headline: limpar(s.headline),
+    subheadline: limpar(s.subheadline),
+    body_paragraph: limpar(s.body_paragraph),
+    cta_message: limpar(s.cta_message),
+  }
+}
+
 const DS_MARKDOWN_MAX_CHARS = 10_000
 
 function truncarMarkdown(ds: string): string {
@@ -337,6 +401,11 @@ TAREFA: gere EXATAMENTE ${totalSlides} slides de CONTEÚDO editorial.
 - Slides 2 a ${totalSlides - 1} "body": headline + body_paragraph (2–3 linhas).
 - Slide ${totalSlides} "cta": cta_message (convite a salvar/compartilhar/seguir).
 
+Precisão factual (obrigatório):
+- Não invente preços em moeda, percentagens, datas ou números específicos que não apareçam explicitamente no tema, na descrição ou nas referências. Se o dado não estiver nas fontes, generalize sem número ou diga que é estimativa/indeterminado.
+- Português claro com frases completas; não truncar ideias no meio.
+- Proibido no texto: rótulos como "CTA 3", "Slide 5", "placeholder", parênteses meta ou texto que soe como instrução interna.
+
 PROIBIDO neste JSON: falar de design system, paleta, ferramentas de UI, mockups ou documentação visual.
 
 Responda APENAS com JSON válido:
@@ -350,7 +419,7 @@ Responda APENAS com JSON válido:
 
   const text = await callGemini(prompt, hasUrls)
   const parsed = extrairJSON<ParsedSlidesOnlyJson>(text, false)
-  return normalizeNodeSlides(parsed.slides ?? [], totalSlides)
+  return normalizeNodeSlides(parsed.slides ?? [], totalSlides).map(sanitizarCamposNodeSlide)
 }
 
 /** Fase 1b: extrai tokens visuais do markdown do DS (chamada separada). */
@@ -374,7 +443,7 @@ Defaults sugeridos quando ausente no guia:
 Responda APENAS com JSON no formato:
 {"styles": { ...campos SlideStyles... }}`
 
-  const text = await callGemini(prompt, false)
+  const text = await callGemini(prompt, false, 'fast')
   const parsed = extrairJSON<{ styles?: Partial<SlideStyles> }>(text, false)
   return parsed.styles ?? {}
 }
@@ -393,7 +462,7 @@ Markdown:
 ${md}
 ---`
 
-  const text = (await callGemini(prompt, false)).trim()
+  const text = (await callGemini(prompt, false, 'fast')).trim()
   return text.length > 900 ? text.slice(0, 897) + '…' : text
 }
 
@@ -550,12 +619,12 @@ PAPEL: ${papel}
 ${tokensBlock}
 ${vizBrief}${refViz}
 
-O slide gerado deve parecer o “próximo slide” do mesmo template das imagens anexas. PROIBIDO: moldura de celular, mockup de app, UI de ferramenta, poster de “guia” ou documentação como tema.
+O slide gerado deve parecer o “próximo slide” do mesmo template das imagens anexas. Mesmas zonas de layout e hierarquia dos outros slides do carrossel; só muda o motivo visual/foto secundária. PROIBIDO: moldura de celular, mockup de app, UI de ferramenta, poster de “guia” ou documentação como tema.
 
 Responda só com o bloco de instruções, sem markdown nem título.`
 
     try {
-      const text = (await postGeminiParts([...imgParts, { text: visionPrompt }])).trim()
+      const text = (await postGeminiParts([...imgParts, { text: visionPrompt }], { tier: 'quality' })).trim()
       return text.length > 1350 ? text.slice(0, 1347) + '…' : text
     } catch {
       /* cai no fluxo texto */
@@ -580,7 +649,7 @@ PAPEL NA HISTÓRIA: ${papel}
 ${tokensBlock}
 ${vizBrief}${refViz}
 
-O layout deve obedecer à hierarquia e zonas descritas em “Análise estruturada” acima (se houver). PROIBIDO: smartphone/laptop/mockup; página de documentação como tema; citar frases literais de moodboards (“SUMMARY”, “GUIDELINES”).
+O layout deve obedecer à hierarquia e zonas descritas em “Análise estruturada” acima (se houver). Indistinguível em estrutura dos demais slides do mesmo carrossel (mesmo grid/margens); varie só imagem de apoio. PROIBIDO: smartphone/laptop/mockup; página de documentação como tema; citar frases literais de moodboards (“SUMMARY”, “GUIDELINES”).
 
 Responda só com o parágrafo criativo, sem título nem markdown.`
 
@@ -641,6 +710,70 @@ Gere apenas o novo texto para o campo "${campo}". Responda SOMENTE com o texto, 
   return callGemini(prompt, false)
 }
 
+function extractGeminiNativeInlineImage(data: unknown): { mimeType: string; data: string } | null {
+  const candidates = (data as { candidates?: unknown[] })?.candidates
+  const first = candidates?.[0]
+  const parts =
+    first && typeof first === 'object'
+      ? (first as { content?: { parts?: unknown[] } }).content?.parts
+      : undefined
+  if (!Array.isArray(parts)) return null
+  for (const p of parts) {
+    if (!p || typeof p !== 'object') continue
+    const inline = (p as { inlineData?: { mimeType?: string; data?: string } }).inlineData
+    const mime = inline?.mimeType ?? ''
+    const d = inline?.data
+    if (typeof d === 'string' && d.length > 80 && /^image\//i.test(mime)) {
+      return { mimeType: mime || 'image/png', data: d }
+    }
+  }
+  return null
+}
+
+function mapAspectForImagen(ar: SlideImageAspectRatio): ImagenPredictAspectRatio {
+  if (ar === '4:5') return '3:4'
+  return ar
+}
+
+async function tryGeminiNativeImage(
+  prompt: string,
+  aspectRatio: SlideImageAspectRatio,
+  signal: AbortSignal,
+): Promise<string | null> {
+  for (const modelId of GEMINI_IMAGE_NATIVE_MODEL_IDS) {
+    try {
+      const response = await fetch(geminiGenerateContentUrl(modelId), {
+        method: 'POST',
+        signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': GEMINI_API_KEY,
+        },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseModalities: ['TEXT', 'IMAGE'],
+            imageConfig: { aspectRatio },
+          },
+        }),
+      })
+      const rawText = await response.text()
+      let data: unknown
+      try {
+        data = JSON.parse(rawText) as unknown
+      } catch {
+        continue
+      }
+      if (!response.ok) continue
+      const img = extractGeminiNativeInlineImage(data)
+      if (img) return `data:${img.mimeType};base64,${img.data}`
+    } catch {
+      continue
+    }
+  }
+  return null
+}
+
 function extractImagenBase64(data: unknown): string | null {
   const walk = (obj: unknown): string | null => {
     if (!obj || typeof obj !== 'object') return null
@@ -671,7 +804,7 @@ function extractImagenBase64(data: unknown): string | null {
 async function predictImagenModel(
   modelId: string,
   prompt: string,
-  aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9',
+  aspectRatio: ImagenPredictAspectRatio,
   signal: AbortSignal
 ): Promise<string> {
   const url = `${GEMINI_IMAGE_PREDICT}/${modelId}:predict?key=${encodeURIComponent(GEMINI_API_KEY)}`
@@ -722,10 +855,10 @@ async function predictImagenModel(
   return `data:image/png;base64,${base64}`
 }
 
-/** Imagen não expõe 4:5 na API; 3:4 é o retrato mais próximo para feed. */
+/** Tenta imagem nativa Gemini (4:5 etc.) com modelos configurados; fallback Imagen `:predict` (4:5 → 3:4). */
 export async function generateSlideImage(
   prompt: string,
-  aspectRatio: '1:1' | '3:4' | '4:3' | '9:16' | '16:9' = '3:4'
+  aspectRatio: SlideImageAspectRatio = '4:5'
 ): Promise<string> {
   if (!GEMINI_API_KEY?.trim()) {
     throw new Error('Chave Gemini ausente: defina VITE_GEMINI_API_KEY')
@@ -737,20 +870,25 @@ export async function generateSlideImage(
 
   let lastErr: Error | null = null
   try {
+    const native = await tryGeminiNativeImage(prompt, aspectRatio, controller.signal)
+    if (native) return native
+
     const promptVariants = [prompt]
     const short = simplifyImagenPrompt(prompt)
     if (short !== prompt) promptVariants.push(short)
 
+    const imagenAspect = mapAspectForImagen(aspectRatio)
+
     for (const modelId of IMAGEN_MODEL_IDS) {
       for (const p of promptVariants) {
         try {
-          return await predictImagenModel(modelId, p, aspectRatio, controller.signal)
+          return await predictImagenModel(modelId, p, imagenAspect, controller.signal)
         } catch (e) {
           lastErr = e instanceof Error ? e : new Error(String(e))
         }
       }
     }
-    throw lastErr ?? new Error('Nenhum modelo Imagen respondeu')
+    throw lastErr ?? new Error('Nenhum modelo de imagem respondeu')
   } finally {
     clearTimeout(timer)
   }
@@ -793,7 +931,7 @@ NÃO inclua: descrição de smartphone/mockup como objeto; frases literais dos p
 Máximo ~320 palavras.`
 
   try {
-    return (await postGeminiParts([...validParts, { text: instruction }])).trim()
+    return (await postGeminiParts([...validParts, { text: instruction }], { tier: 'quality' })).trim()
   } catch {
     return ''
   }
@@ -827,10 +965,15 @@ export async function gerarSlideCompleto(params: {
   }
 
   const layoutDesc = slide.slide_type === 'cover'
-    ? 'Slide de capa: composição visual marcante, headline em destaque, hierarquia tipográfica clara'
+    ? 'Capa: mesmo template das referências — zonas e hierarquia iguais aos demais slides; destaque para headline/tag sem mudar o grid'
     : slide.slide_type === 'body'
-    ? 'Slide de conteúdo: fundo limpo, texto bem espaçado, elemento gráfico complementar sutil'
-    : 'Slide CTA: fundo totalmente preenchido com cor de destaque, texto centralizado e impactante'
+    ? 'Corpo: repetir o mesmo arranjo de zonas dos outros slides “corpo”; apenas imagem/foto de apoio muda'
+    : `CTA: mesmo grid das referências com fundo ${s.ctaBackgroundColor}; mensagem centralizada — sem novo estilo gráfico`
+
+  const consistenciaCarrossel = `TEMPLATE ÚNICO (obrigatório):
+- Margens ${s.padding}px e hierarquia tipográfica RELATIVA iguais em todos os slides; parecer exportado do mesmo arquivo de layout.
+- Slides de corpo compartilham a mesma estrutura entre si; não alternar entre layout totalmente diferente (ex.: só texto vs split pesado vs mockup 3D) salvo se as REFERÊNCIAS VISUAIS mostrarem essa variação explicitamente.
+- CTA usa apenas os tokens de cor de CTA; não introduzir gradientes, neon ou elementos que não existam no design system descrito.\n`
 
   const briefNote = visualBrief.trim()
     ? `\nDIRETRIZES VISUAIS RESUMIDAS (estilo apenas — não ilustrar como documento nem UI):\n${visualBrief}\n`
@@ -863,6 +1006,7 @@ ${briefNote}${refNote}
 TEXTOS QUE DEVEM APARECER NA IMAGEM (exatamente):
 ${contentLines.join('\n') || 'Sem texto'}
 
+${consistenciaCarrossel}
 LAYOUT: ${layoutDesc}
 Alinhamento: ${alignLabel}
 Padding: ${s.padding}px
