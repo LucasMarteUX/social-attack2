@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 @layer base {
+  /* Accent marca #5A47FF (RGB) — contraste: CTAs usam texto branco */
   :root {
     /* Tokens semânticos — DARK (default) */
     --bg: 10 10 10;
@@ -124,5 +125,25 @@
 
   .border-line-strong {
     border-color: rgb(var(--line) / 0.14);
+  }
+}
+
+@layer components {
+  .react-flow__controls {
+    box-shadow: none;
+    border: 1px solid rgb(var(--line) / 0.12);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .react-flow__controls-button {
+    background: rgb(var(--surface)) !important;
+    border-bottom: 1px solid rgb(var(--line) / 0.08) !important;
+    fill: rgb(var(--ink)) !important;
+  }
+  .react-flow__controls-button:last-child {
+    border-bottom: none !important;
+  }
+  .react-flow__controls-button:hover {
+    background: rgb(var(--surface-2)) !important;
   }
 }

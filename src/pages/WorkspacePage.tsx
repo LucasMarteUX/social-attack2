@@ -41,6 +41,7 @@ import {
 import { supabase } from '../lib/supabase'
 import type { CarouselSlide, SlideStyles } from '../data/mock'
 import { DEFAULT_SLIDE_STYLES, PLACEHOLDER_TEXTO_SLIDE_GERANDO } from '../data/mock'
+import { useTheme } from '../lib/theme'
 
 const NODE_TYPES = { mainNode: MainNode, slideNode: SlideNode }
 
@@ -139,10 +140,12 @@ function MiniMapNodePreview({ x, y, width, height, id }: { x: number; y: number;
     )
   }
 
-  return <rect x={x} y={y} width={width} height={height} fill="#6D28D9" rx={3} />
+  return <rect x={x} y={y} width={width} height={height} fill="#5A47FF" rx={3} />
 }
 
 export default function WorkspacePage() {
+  const { theme } = useTheme()
+  const isDarkFlow = theme === 'dark'
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const isNew = !id || id === 'novo'
@@ -876,7 +879,7 @@ export default function WorkspacePage() {
           </p>
           {carouselInfo && (
             <>
-              <Badge variant={STATUS_VARIANTS[carouselInfo.status] ?? 'default'}>
+              <Badge variant={STATUS_VARIANTS[carouselInfo.status] ?? 'neutral'}>
                 {STATUS_LABELS[carouselInfo.status] ?? carouselInfo.status}
               </Badge>
               <span className="text-[11px] text-ink-faint flex-shrink-0">
@@ -896,6 +899,7 @@ export default function WorkspacePage() {
       )}
 
       <ReactFlow
+        colorMode={isDarkFlow ? 'dark' : 'light'}
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
@@ -908,12 +912,19 @@ export default function WorkspacePage() {
         minZoom={0.2}
         maxZoom={1.5}
       >
-        <Background gap={20} size={1} color="#e5e7eb" />
+        <Background
+          gap={20}
+          size={1}
+          color={isDarkFlow ? 'rgba(255,255,255,0.055)' : '#d4d4d8'}
+        />
         <Controls />
         <MiniMap
           nodeComponent={MiniMapNodePreview}
-          maskColor="rgba(0,0,0,0.06)"
-          style={{ background: '#f5f3f0' }}
+          maskColor={isDarkFlow ? 'rgba(10,10,10,0.72)' : 'rgba(255,255,255,0.65)'}
+          className="rounded-lg border border-line/[0.12] overflow-hidden"
+          style={{
+            backgroundColor: isDarkFlow ? 'rgb(28 28 28)' : 'rgb(244 244 245)',
+          }}
         />
       </ReactFlow>
 

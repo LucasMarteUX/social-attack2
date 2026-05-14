@@ -57,8 +57,8 @@ export default function HomePage() {
     return [
       { label: 'Pronto', value: counts.pronto ?? 0, color: '#65A30D' },
       { label: 'Agendado', value: counts.agendado ?? 0, color: '#0891B2' },
-      { label: 'Rascunho', value: counts.rascunho ?? 0, color: '#E55A30' },
-      { label: 'Publicado', value: counts.publicado ?? 0, color: '#6D28D9' },
+      { label: 'Rascunho', value: counts.rascunho ?? 0, color: '#5A47FF' },
+      { label: 'Publicado', value: counts.publicado ?? 0, color: '#4338CA' },
     ].filter((s) => s.value > 0)
   }, [criativos])
 
@@ -100,7 +100,7 @@ export default function HomePage() {
         <div className="flex items-center gap-2">
           <button className="w-10 h-10 rounded-full bg-surface border border-line/[0.12] flex items-center justify-center text-ink-muted hover:bg-line/[0.04] transition-colors relative">
             <Bell size={17} />
-            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-coral-700" />
+            <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-accent" />
           </button>
           <Button onClick={() => navigate('/criativos/novo')}>
             <Plus size={16} />
@@ -333,7 +333,7 @@ export default function HomePage() {
                   <p className="flex-1 text-body-md font-medium text-ink">{todo.titulo}</p>
                   {diffDias !== null && (
                     <span
-                      className={`text-label ${diffDias <= 1 ? 'text-coral-700 font-semibold' : 'text-ink-muted'}`}
+                      className={`text-label ${diffDias <= 1 ? 'text-accent font-semibold' : 'text-ink-muted'}`}
                     >
                       {diffDias === 0 ? 'hoje' : diffDias === 1 ? 'amanhã' : `em ${diffDias} dias`}
                     </span>

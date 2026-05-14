@@ -24,18 +24,12 @@ export default function CategoryCard({
       onClick={onClick}
     >
       {/* Background decorativo */}
-      <div
-        className="absolute -top-16 -right-16 w-40 h-40 rounded-full opacity-20 blur-2xl transition-opacity group-hover:opacity-30"
-        style={{ backgroundColor: categoria.cor }}
-      />
+      <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full opacity-20 blur-2xl transition-opacity group-hover:opacity-30 bg-accent pointer-events-none" />
 
       <div className="relative p-6">
         {/* Header: ícone + ações */}
         <div className="flex items-start justify-between gap-3 mb-5">
-          <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-heading-md flex-shrink-0 shadow-sm"
-            style={{ backgroundColor: categoria.cor }}
-          >
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white font-bold text-heading-md shrink-0 shadow-sm bg-accent">
             {categoria.nome[0].toUpperCase()}
           </div>
 
@@ -51,7 +45,7 @@ export default function CategoryCard({
             </button>
             <button
               onClick={onDelete}
-              className="p-1.5 rounded-full text-ink-faint hover:text-red-600 hover:bg-red-50 transition-colors"
+              className="p-1.5 rounded-full text-ink-faint hover:text-red-600 hover:bg-red-500/10 transition-colors"
             >
               <Trash2 size={14} />
             </button>
@@ -85,10 +79,7 @@ export default function CategoryCard({
             </div>
           </div>
 
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center transition-all group-hover:scale-110"
-            style={{ backgroundColor: `${categoria.cor}15`, color: categoria.cor }}
-          >
+          <div className="w-8 h-8 rounded-full flex items-center justify-center transition-all group-hover:scale-110 bg-accent/15 text-accent">
             <ArrowUpRight size={15} />
           </div>
         </div>
