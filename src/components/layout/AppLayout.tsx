@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { Menu, Zap } from 'lucide-react'
 import Sidebar from './Sidebar'
 import MobileDrawer from './MobileDrawer'
@@ -7,6 +7,8 @@ import AppTopBar from './AppTopBar'
 
 export default function AppLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const { pathname } = useLocation()
+  const isWorkspaceCanvas = pathname.startsWith('/workspace/')
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-bg text-ink">
@@ -16,7 +18,7 @@ export default function AppLayout() {
 
       <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
 
-      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 min-h-0 overflow-hidden">
         <header className="flex md:hidden items-center gap-3 px-4 py-3 bg-surface border-b border-line/[0.08] flex-shrink-0">
           <button
             type="button"
@@ -36,7 +38,13 @@ export default function AppLayout() {
 
         <AppTopBar />
 
-        <main className="flex-1 overflow-y-auto px-4 py-6 md:px-10 md:py-8">
+        <main
+          className={
+            isWorkspaceCanvas
+              ? 'flex-1 min-h-0 flex flex-col overflow-hidden p-0 bg-bg'
+              : 'flex-1 min-h-0 overflow-y-auto px-4 py-6 md:px-10 md:py-8'
+          }
+        >
           <Outlet />
         </main>
       </div>

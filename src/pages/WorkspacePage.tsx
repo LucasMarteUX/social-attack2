@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import {
   ReactFlow,
   Background,
+  BackgroundVariant,
   Controls,
   MiniMap,
   useNodesState,
@@ -850,7 +851,7 @@ export default function WorkspacePage() {
   const carouselCtxModal = montarContextoCarrosselParaImagem()
 
   return (
-    <div className="w-full h-[calc(100vh-64px)] relative">
+    <div className="flex-1 min-h-0 w-full flex flex-col bg-bg relative">
 
       {avisoImagens && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] max-w-lg w-[calc(100%-2rem)] rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-md flex gap-3 items-start">
@@ -898,8 +899,10 @@ export default function WorkspacePage() {
         </div>
       )}
 
-      <ReactFlow
+      <div className="flex-1 min-h-0 w-full min-w-0 relative z-0">
+        <ReactFlow
         colorMode={isDarkFlow ? 'dark' : 'light'}
+        className="h-full w-full bg-bg"
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
@@ -908,14 +911,16 @@ export default function WorkspacePage() {
         nodeTypes={NODE_TYPES}
         onInit={(inst) => { rfRef.current = inst }}
         fitView
-        fitViewOptions={{ padding: 0.25 }}
-        minZoom={0.2}
-        maxZoom={1.5}
+        fitViewOptions={{ padding: 0.2 }}
+        minZoom={0.05}
+        maxZoom={4}
       >
         <Background
+          id="workspace-grid"
+          variant={BackgroundVariant.Dots}
           gap={20}
-          size={1}
-          color={isDarkFlow ? 'rgba(255,255,255,0.055)' : '#d4d4d8'}
+          size={1.25}
+          color={isDarkFlow ? 'rgba(255,255,255,0.055)' : 'rgba(0,0,0,0.06)'}
         />
         <Controls />
         <MiniMap
@@ -927,6 +932,7 @@ export default function WorkspacePage() {
           }}
         />
       </ReactFlow>
+      </div>
 
       {regenModal && (
         <RegenerateTextModal
