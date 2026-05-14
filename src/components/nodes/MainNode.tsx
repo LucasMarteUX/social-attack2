@@ -17,7 +17,7 @@ export interface MainNodeData {
     tomNome: string
     tomDescricao: string
     designSystemId: string
-    designSystemName: string
+    designSystemMarkdown: string
     totalSlides: number
   }) => Promise<void>
   gerating?: boolean
@@ -62,7 +62,7 @@ export default function MainNode({ data }: Props) {
       tomNome: tom?.nome ?? '',
       tomDescricao: tom?.descricao ?? '',
       designSystemId,
-      designSystemName: ds?.name ?? '',
+      designSystemMarkdown: ds?.markdown ?? '',
       totalSlides,
     })
   }

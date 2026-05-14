@@ -70,7 +70,7 @@ export default function WorkspacePage() {
     tomNome: string
     tomDescricao: string
     designSystemId: string
-    designSystemName: string
+    designSystemMarkdown: string
     totalSlides: number
   }) {
     setGenerating(true)
@@ -102,7 +102,7 @@ export default function WorkspacePage() {
         referencesText: params.referencesText,
         tomNome: params.tomNome,
         tomDescricao: params.tomDescricao,
-        designSystemName: params.designSystemName,
+        designSystemMarkdown: params.designSystemMarkdown,
         totalSlides: params.totalSlides,
       })
 

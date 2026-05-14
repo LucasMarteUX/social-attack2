@@ -144,10 +144,10 @@ export async function gerarRoteirosNodes(params: {
   referencesText: string
   tomNome: string
   tomDescricao: string
-  designSystemName: string
+  designSystemMarkdown: string
   totalSlides: number
 }): Promise<NodeCarouselScript> {
-  const { titulo, descricao, referencesUrls, referencesText, tomNome, tomDescricao, designSystemName, totalSlides } = params
+  const { titulo, descricao, referencesUrls, referencesText, tomNome, tomDescricao, designSystemMarkdown, totalSlides } = params
   const hasUrls = referencesUrls.length > 0
 
   const refBlock = [
@@ -155,12 +155,15 @@ export async function gerarRoteirosNodes(params: {
     hasUrls ? `Links de referência:\n${referencesUrls.map((u) => `- ${u}`).join('\n')}` : '',
   ].filter(Boolean).join('\n\n')
 
+  const dsBlock = designSystemMarkdown
+    ? `\nDesign System (consulte ao criar os textos):\n${designSystemMarkdown}\n`
+    : ''
+
   const prompt = `Você é um especialista em criação de conteúdo para Instagram.
 Crie um carrossel com exatamente ${totalSlides} slides sobre: "${titulo}".
 Descrição: ${descricao || 'não fornecida'}.
 Tom de voz: ${tomNome}${tomDescricao ? ` — ${tomDescricao}` : ''}.
-Design System: ${designSystemName}.
-${refBlock ? `\n${refBlock}\n` : ''}
+${dsBlock}${refBlock ? `\n${refBlock}\n` : ''}
 ESTRUTURA OBRIGATÓRIA:
 - Slide 1: tipo "cover" — tag (categoria/tema em 2-3 palavras), headline (título impactante), subheadline (frase complementar curta)
 - Slides 2 até ${totalSlides - 1}: tipo "body" — headline (ponto principal) + body_paragraph (desenvolvimento, 2-3 linhas)

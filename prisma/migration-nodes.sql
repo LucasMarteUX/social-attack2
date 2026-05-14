@@ -1,37 +1,14 @@
 -- ============================================================
 -- Migration: Arquitetura de Nodes para Carrosséis
--- Rodar no Supabase SQL Editor
+-- Rodar no Supabase SQL Editor (caso precise recriar do zero)
 -- ============================================================
 
 -- 1. design_systems
 CREATE TABLE IF NOT EXISTS design_systems (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
-  description TEXT,
+  markdown TEXT NOT NULL DEFAULT '',
   is_active BOOLEAN DEFAULT true,
-
-  cover_tag_font_size INTEGER DEFAULT 12,
-  cover_tag_color VARCHAR(20) DEFAULT '#6D28D9',
-  cover_headline_font_size INTEGER DEFAULT 32,
-  cover_headline_weight VARCHAR(20) DEFAULT 'bold',
-  cover_headline_font_family VARCHAR(50) DEFAULT 'Inter',
-  cover_subheadline_font_size INTEGER DEFAULT 14,
-  cover_subheadline_color VARCHAR(20) DEFAULT '#666666',
-
-  body_headline_font_size INTEGER DEFAULT 24,
-  body_headline_weight VARCHAR(20) DEFAULT 'bold',
-  body_paragraph_font_size INTEGER DEFAULT 16,
-  body_paragraph_color VARCHAR(20) DEFAULT '#333333',
-
-  cta_message_font_size INTEGER DEFAULT 28,
-  cta_message_weight VARCHAR(20) DEFAULT 'bold',
-  cta_background_color VARCHAR(20) DEFAULT '#6D28D9',
-  cta_text_color VARCHAR(20) DEFAULT '#FFFFFF',
-
-  global_background_color VARCHAR(20) DEFAULT '#FFFFFF',
-  global_accent_color VARCHAR(20) DEFAULT '#6D28D9',
-  global_font_family VARCHAR(50) DEFAULT 'Inter',
-
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

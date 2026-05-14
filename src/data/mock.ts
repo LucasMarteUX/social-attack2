@@ -75,26 +75,8 @@ export interface TomDeVoz {
 export interface DesignSystem {
   id: string
   name: string
-  description: string | null
+  markdown: string
   is_active: boolean
-  cover_tag_font_size: number
-  cover_tag_color: string
-  cover_headline_font_size: number
-  cover_headline_weight: string
-  cover_headline_font_family: string
-  cover_subheadline_font_size: number
-  cover_subheadline_color: string
-  body_headline_font_size: number
-  body_headline_weight: string
-  body_paragraph_font_size: number
-  body_paragraph_color: string
-  cta_message_font_size: number
-  cta_message_weight: string
-  cta_background_color: string
-  cta_text_color: string
-  global_background_color: string
-  global_accent_color: string
-  global_font_family: string
   created_at: string
   updated_at: string
 }

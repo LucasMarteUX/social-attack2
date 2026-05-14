@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Copy, Trash2, Palette } from 'lucide-react'
+import { Plus, Pencil, Copy, Trash2, Palette, FileText } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Modal from '../components/ui/Modal'
 import Spinner from '../components/ui/Spinner'
@@ -93,34 +93,25 @@ interface CardProps {
 }
 
 function DesignSystemCard({ ds, onEdit, onDuplicate, onDelete }: CardProps) {
+  const preview = ds.markdown
+    ? ds.markdown.split('\n').slice(0, 4).join('\n')
+    : 'Sem documentação ainda.'
+
   return (
     <div className="bg-white rounded-xl border border-black/[0.06] shadow-sm hover:shadow-md transition-all overflow-hidden">
-      {/* Prévia visual com as cores do design system */}
-      <div
-        className="h-32 flex items-center justify-center gap-2 px-4"
-        style={{ backgroundColor: ds.global_background_color }}
-      >
-        {(['Capa', 'Corpo', 'CTA'] as const).map((label, i) => (
-          <div
-            key={label}
-            className="flex-1 rounded-lg flex flex-col items-center justify-center gap-1 p-2"
-            style={{
-              aspectRatio: '4/5',
-              maxWidth: '64px',
-              backgroundColor: i === 2 ? ds.cta_background_color : ds.global_background_color,
-              border: `1.5px solid ${ds.global_accent_color}`,
-            }}
-          >
-            <div className="w-5 h-1 rounded-full" style={{ backgroundColor: ds.global_accent_color }} />
-            <div className="w-full h-1.5 rounded" style={{ backgroundColor: i === 2 ? ds.cta_text_color : ds.cover_tag_color, opacity: 0.8 }} />
-            <div className="w-3/4 h-1 rounded" style={{ backgroundColor: i === 2 ? ds.cta_text_color : ds.body_paragraph_color, opacity: 0.5 }} />
-          </div>
-        ))}
+      {/* Preview do markdown */}
+      <div className="h-28 bg-neutral-50 border-b border-neutral-100 px-4 py-3 overflow-hidden">
+        <pre className="text-[10px] text-neutral-400 font-mono leading-relaxed whitespace-pre-wrap line-clamp-5">
+          {preview}
+        </pre>
       </div>
 
       <div className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="text-body-md font-semibold text-neutral-900 leading-snug">{ds.name}</h3>
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <FileText size={14} className="text-purple-500 flex-shrink-0" />
+            <h3 className="text-body-md font-semibold text-neutral-900 leading-snug truncate">{ds.name}</h3>
+          </div>
           <div className="flex items-center gap-1 flex-shrink-0">
             <button onClick={onEdit} className="p-1.5 rounded-lg text-neutral-400 hover:text-purple-700 hover:bg-purple-50 transition-colors">
               <Pencil size={14} />
@@ -133,15 +124,9 @@ function DesignSystemCard({ ds, onEdit, onDuplicate, onDelete }: CardProps) {
             </button>
           </div>
         </div>
-        {ds.description && (
-          <p className="text-body-sm text-neutral-500 line-clamp-2">{ds.description}</p>
-        )}
-        <div className="flex items-center gap-2 mt-3">
-          <div className="w-3 h-3 rounded-full border border-black/10" style={{ backgroundColor: ds.global_accent_color }} />
-          <span className="text-[11px] text-neutral-400 font-mono">{ds.global_accent_color}</span>
-          <span className="text-[11px] text-neutral-300">·</span>
-          <span className="text-[11px] text-neutral-400">{ds.global_font_family}</span>
-        </div>
+        <p className="text-[11px] text-neutral-400">
+          {ds.markdown ? `${ds.markdown.split('\n').filter(Boolean).length} linhas de documentação` : 'Sem conteúdo'}
+        </p>
       </div>
     </div>
   )
@@ -155,7 +140,7 @@ function EmptyState({ onNew }: { onNew: () => void }) {
       </div>
       <h3 className="text-heading-sm font-semibold text-neutral-900 mb-2">Nenhum design system ainda</h3>
       <p className="text-body-md text-neutral-500 mb-6 max-w-xs">
-        Crie um design system para definir tipografia, cores e estrutura dos seus carrosséis.
+        Crie um design system e documente em markdown as cores, tipografia e regras de layout dos seus carrosséis.
       </p>
       <Button onClick={onNew}>
         <Plus size={16} />
