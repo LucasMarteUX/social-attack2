@@ -10,6 +10,23 @@ const GEMINI_TEXT_MODEL_FAST =
 
 type GeminiTextTier = 'quality' | 'fast'
 
+const GEMINI_TEXT_RETRY_MAX = Math.min(
+  8,
+  Math.max(1, Number((import.meta.env.VITE_GEMINI_TEXT_RETRIES as string | undefined) ?? '4') || 4),
+)
+const GEMINI_TEXT_RETRY_BASE_MS = Math.max(
+  400,
+  Number((import.meta.env.VITE_GEMINI_TEXT_RETRY_BASE_MS as string | undefined) ?? '1200') || 1200,
+)
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function isTransientGeminiHttpStatus(status: number): boolean {
+  return status === 429 || status === 500 || status === 502 || status === 503
+}
+
 function geminiGenerateContentUrl(modelId: string): string {
   return `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${encodeURIComponent(GEMINI_API_KEY)}`
 }
@@ -70,36 +87,7 @@ interface PostGeminiPartsOptions {
   model?: string
 }
 
-async function postGeminiParts(
-  parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }>,
-  options: boolean | PostGeminiPartsOptions = {},
-): Promise<string> {
-  const opts: PostGeminiPartsOptions =
-    typeof options === 'boolean' ? { useSearch: options } : (options ?? {})
-  const useSearch = !!opts.useSearch
-  const modelId =
-    opts.model?.trim() ||
-    (opts.tier === 'fast' ? GEMINI_TEXT_MODEL_FAST : GEMINI_TEXT_MODEL_QUALITY)
-
-  const body: Record<string, unknown> = {
-    contents: [{ role: 'user', parts }],
-  }
-  if (useSearch) {
-    body.tools = [{ google_search: {} }]
-  }
-
-  const response = await fetch(geminiGenerateContentUrl(modelId), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-
-  if (!response.ok) {
-    const err = await response.text()
-    throw new Error(`Gemini API error ${response.status}: ${err}`)
-  }
-
-  const data = (await response.json()) as Record<string, unknown>
+function parseGeminiTextResponse(data: Record<string, unknown>): string {
   const blocked = data.promptFeedback && typeof data.promptFeedback === 'object'
     ? (data.promptFeedback as { blockReason?: string }).blockReason
     : undefined
@@ -137,6 +125,90 @@ async function postGeminiParts(
     throw new Error('Gemini retornou texto vazio (possível bloqueio ou erro no modelo).')
   }
   return text
+}
+
+async function postGeminiParts(
+  parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }>,
+  options: boolean | PostGeminiPartsOptions = {},
+): Promise<string> {
+  const opts: PostGeminiPartsOptions =
+    typeof options === 'boolean' ? { useSearch: options } : (options ?? {})
+  const useSearch = !!opts.useSearch
+  const explicit = opts.model?.trim()
+
+  const modelChain: string[] = explicit
+    ? [explicit]
+    : opts.tier === 'fast'
+      ? [GEMINI_TEXT_MODEL_FAST]
+      : [GEMINI_TEXT_MODEL_QUALITY, GEMINI_TEXT_MODEL_FAST]
+
+  const uniqueModels = [...new Set(modelChain)]
+
+  const body: Record<string, unknown> = {
+    contents: [{ role: 'user', parts }],
+  }
+  if (useSearch) {
+    body.tools = [{ google_search: {} }]
+  }
+
+  const bodyJson = JSON.stringify(body)
+  let lastErr: Error | null = null
+
+  for (const modelId of uniqueModels) {
+    for (let attempt = 0; attempt < GEMINI_TEXT_RETRY_MAX; attempt++) {
+      try {
+        const response = await fetch(geminiGenerateContentUrl(modelId), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: bodyJson,
+        })
+
+        const rawText = await response.text()
+
+        if (!response.ok) {
+          const retryable = isTransientGeminiHttpStatus(response.status)
+          const canRetrySameModel = retryable && attempt < GEMINI_TEXT_RETRY_MAX - 1
+          if (canRetrySameModel) {
+            const delay =
+              GEMINI_TEXT_RETRY_BASE_MS * 2 ** attempt + Math.floor(Math.random() * 400)
+            await sleep(delay)
+            continue
+          }
+          lastErr = new Error(`Gemini API error ${response.status}: ${rawText.slice(0, 800)}`)
+          if (retryable && uniqueModels.length > 1 && modelId !== uniqueModels[uniqueModels.length - 1]) {
+            break
+          }
+          throw lastErr
+        }
+
+        let data: Record<string, unknown>
+        try {
+          data = JSON.parse(rawText) as Record<string, unknown>
+        } catch {
+          throw new Error(`Gemini resposta inválida (não JSON). Trecho: ${rawText.slice(0, 200)}`)
+        }
+        return parseGeminiTextResponse(data)
+      } catch (e) {
+        if (e instanceof Error && e.message.startsWith('Gemini API error')) throw e
+        if (e instanceof Error && e.message.startsWith('Gemini bloqueou')) throw e
+        if (e instanceof Error && e.message.startsWith('Gemini não retornou')) throw e
+        if (e instanceof Error && e.message.startsWith('Gemini não completou')) throw e
+        if (e instanceof Error && e.message.startsWith('Gemini retornou texto vazio')) throw e
+        if (e instanceof Error && e.message.startsWith('Gemini resposta inválida')) throw e
+        lastErr = e instanceof Error ? e : new Error(String(e))
+        const canRetrySameModel = attempt < GEMINI_TEXT_RETRY_MAX - 1
+        if (canRetrySameModel) {
+          const delay =
+            GEMINI_TEXT_RETRY_BASE_MS * 2 ** attempt + Math.floor(Math.random() * 400)
+          await sleep(delay)
+          continue
+        }
+        break
+      }
+    }
+  }
+
+  throw lastErr ?? new Error('Gemini: falha após tentativas com todos os modelos.')
 }
 
 async function callGemini(
