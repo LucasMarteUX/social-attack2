@@ -87,6 +87,18 @@ export interface SlideStyles {
   coverTextAlign: 'left' | 'center' | 'right'
   bodyTextAlign: 'left' | 'center' | 'right'
   padding: number
+  // Chrome permanente gerado nas imagens
+  chromeUsername?: string
+  chromeFooterText?: string
+  // Tipografia detalhada para consistência entre slides
+  headlineLineHeight?: number
+  bodyLineHeight?: number
+  headlineLetterSpacing?: string
+  bodyLetterSpacing?: string
+  tagLetterSpacing?: string
+  headlineFontWeight?: number
+  bodyFontWeight?: number
+  fontStyleDescription?: string
 }
 
 export const DEFAULT_SLIDE_STYLES: SlideStyles = {
@@ -104,6 +116,16 @@ export const DEFAULT_SLIDE_STYLES: SlideStyles = {
   coverTextAlign: 'left',
   bodyTextAlign: 'left',
   padding: 24,
+  chromeUsername: '',
+  chromeFooterText: 'ARRASTE PARA O LADO',
+  headlineLineHeight: 1.05,
+  bodyLineHeight: 1.55,
+  headlineLetterSpacing: '-0.02em',
+  bodyLetterSpacing: '0em',
+  tagLetterSpacing: '0.1em',
+  headlineFontWeight: 900,
+  bodyFontWeight: 400,
+  fontStyleDescription: 'grotesco sans-serif; headlines bold/black compacto; corpo regular',
 }
 
 export interface DesignSystem {

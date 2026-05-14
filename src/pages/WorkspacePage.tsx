@@ -412,6 +412,7 @@ export default function WorkspacePage() {
               .join(' · ')
             const dataUrl = await gerarSlideCompleto({
               slide: node,
+              totalSlides: params.totalSlides,
               styles: estilos,
               visualBrief: visualBrief.trim() || undefined,
               referenceDescription,
@@ -540,6 +541,7 @@ export default function WorkspacePage() {
         }
         const dataUrl = await gerarSlideCompleto({
           slide: node,
+          totalSlides: slidesList.length,
           styles: ctx.styles,
           visualBrief: ctx.visualBrief.trim() || undefined,
           referenceDescription: ctx.referenceDescription,
@@ -728,6 +730,7 @@ export default function WorkspacePage() {
       const node = carouselSlideToNodeSlide(slide)
       const dataUrl = await gerarVariacaoFundoSlide({
         slide: node,
+        totalSlides: slides.length,
         styles: slideStylesRef.current,
         visualBrief: visualBriefRef.current.trim() || undefined,
         referenceDescription: visualRefDescRef.current,

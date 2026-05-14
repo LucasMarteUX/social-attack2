@@ -68,6 +68,72 @@ function simplifyImagenPrompt(full: string): string {
   return `${head}\n\n(Resumo) Slide editorial Instagram 4:5, texto legível, design limpo, sem marcas d'água.`
 }
 
+// ─── Helpers de consistência visual ──────────────────────────────────────────
+
+function buildChromeBlock(s: SlideStyles, slideNumber: number, totalSlides: number): string {
+  const pad = s.padding ?? 24
+  const footer = s.chromeFooterText?.trim() || 'ARRASTE PARA O LADO'
+  const username = s.chromeUsername?.trim() || ''
+  const counter = `${String(slideNumber).padStart(2, '0')}/${String(totalSlides).padStart(2, '0')}`
+
+  const usernameLines = username
+    ? [
+        `- TOPO ESQUERDO: "${username}" — sans uppercase, 11–12px, cor #888888, letter-spacing 0.1em, a ${pad}px do canto superior esquerdo`,
+        `- TOPO DIREITO: "${counter}" — mesmo estilo tipográfico; formato NN/NN, a ${pad}px do canto superior direito`,
+      ]
+    : [
+        `- TOPO DIREITO: "${counter}" — sans uppercase, 11–12px, cor #888888, letter-spacing 0.1em, a ${pad}px do canto superior direito`,
+      ]
+
+  return `CHROME PERMANENTE (IDÊNTICO em TODOS os slides do carrossel — sem exceção):
+${usernameLines.join('\n')}
+- LINHA SEPARADORA HORIZONTAL: 1px sólido #333333, largura total menos ${pad * 2}px, posicionada a ~88% da altura do slide
+- RODAPÉ ESQUERDO: "${footer}" — uppercase, 11px, #888888, letter-spacing 0.12em, mesma altura da seta
+- RODAPÉ DIREITO: "→" — mesmo tamanho e cor do rodapé esquerdo
+PROIBIDO omitir, mover, redimensionar ou reestilizar qualquer elemento do chrome. Cada slide deve parecer que o chrome foi criado no mesmo arquivo de design.`
+}
+
+function buildTypographyBlock(s: SlideStyles): string {
+  const hlLH = s.headlineLineHeight ?? 1.05
+  const bodyLH = s.bodyLineHeight ?? 1.55
+  const hlLS = s.headlineLetterSpacing ?? '-0.02em'
+  const bodyLS = s.bodyLetterSpacing ?? '0em'
+  const tagLS = s.tagLetterSpacing ?? '0.1em'
+  const hlW = s.headlineFontWeight ?? 900
+  const bodyW = s.bodyFontWeight ?? 400
+  const styleDesc = s.fontStyleDescription?.trim() || 'grotesco sans-serif; headlines bold/black; corpo regular'
+
+  return `SISTEMA TIPOGRÁFICO (invariável em TODOS os slides do carrossel):
+- Headline/título: peso ${hlW} (black/extra-bold), line-height ${hlLH}, letter-spacing ${hlLS}, cor ${s.textColor}
+- Corpo/parágrafo: peso ${bodyW} (regular), line-height ${bodyLH}, letter-spacing ${bodyLS}, cor ${s.textColor} com 70% de opacidade
+- Tag/label: uppercase, bold, letter-spacing ${tagLS}, cor ${s.tagColor}
+- Estilo geral: ${styleDesc}
+REGRAS ABSOLUTAS DE COR:
+- Headline sempre na cor ${s.textColor} — NUNCA usar ${s.primaryColor} para texto de headline
+- Cor primária ${s.primaryColor} é exclusiva para tags, bordas, acentos e elementos CTA
+- Fundo padrão dos slides corpo/capa: ${s.backgroundColor}
+- Fundo do CTA: ${s.ctaBackgroundColor}; texto CTA: ${s.ctaTextColor}
+Cada slide deve ter EXATAMENTE o mesmo peso visual das headlines e o mesmo estilo de corpo que os outros slides.`
+}
+
+function deriveContextualImageInstruction(slide: NodeSlide): string {
+  const parts: string[] = []
+  if (slide.headline) parts.push(slide.headline)
+  if (slide.subheadline) parts.push(slide.subheadline)
+  if (slide.body_paragraph) parts.push(slide.body_paragraph)
+  if (slide.cta_message) parts.push(slide.cta_message)
+  const conteudo = parts.join(' — ').slice(0, 300)
+  if (!conteudo) return ''
+
+  return `IMAGEM/FUNDO CONTEXTUAL — RELAÇÃO OBRIGATÓRIA COM O CONTEÚDO:
+Tema específico deste slide: "${conteudo}"
+A fotografia, ilustração ou elemento de fundo DEVE retratar ou evocar diretamente esse tema.
+PROIBIDO usar imagem aleatória ou genérica que não tenha relação com o texto acima (ex.: arquitetura histórica para um slide sobre assinantes; tecnologia abstrata para um slide sobre comunidade).
+A imagem deve fazer sentido imediato para alguém que só vê a arte, sem ler o texto.`
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export interface IdeaSuggestion {
   titulo: string
   descricao: string
@@ -538,8 +604,16 @@ ${md}
 Extraia e mapeie para este JSON (use valores do guia; onde não houver info, use os defaults sugeridos abaixo).
 NÃO inclua texto de slides, headlines nem copy. Apenas o objeto "styles".
 
-Defaults sugeridos quando ausente no guia:
-{"primaryColor":"#6D28D9","backgroundColor":"#FFFFFF","textColor":"#1A1A1A","ctaBackgroundColor":"#6D28D9","ctaTextColor":"#FFFFFF","tagColor":"#6D28D9","coverHeadlineFontSize":32,"coverSubheadlineFontSize":14,"bodyHeadlineFontSize":24,"bodyParagraphFontSize":16,"ctaFontSize":28,"coverTextAlign":"left","bodyTextAlign":"left","padding":24}
+Campos a extrair:
+- Cores: primaryColor, backgroundColor, textColor, ctaBackgroundColor, ctaTextColor, tagColor
+- Tamanhos de fonte (px): coverHeadlineFontSize, coverSubheadlineFontSize, bodyHeadlineFontSize, bodyParagraphFontSize, ctaFontSize
+- Alinhamento: coverTextAlign, bodyTextAlign ("left"/"center"/"right")
+- Espaçamento: padding (px)
+- Chrome: chromeUsername (nome/handle da marca, ex.: "LUCASMARTE.IA" ou "@usuario" se documentado no guia; "" se não houver), chromeFooterText (texto de navegação do rodapé, ex.: "ARRASTE PARA O LADO"; default "ARRASTE PARA O LADO")
+- Tipografia detalhada: headlineLineHeight (ratio, ex.: 1.05), bodyLineHeight (ex.: 1.55), headlineLetterSpacing (em, ex.: "-0.02em"), bodyLetterSpacing (ex.: "0em"), tagLetterSpacing (ex.: "0.1em"), headlineFontWeight (100–900, ex.: 900), bodyFontWeight (ex.: 400), fontStyleDescription (string curta descrevendo o estilo para gerador de imagens, ex.: "grotesco black condensado; corpo regular relaxed")
+
+Defaults quando ausente no guia:
+{"primaryColor":"#6D28D9","backgroundColor":"#FFFFFF","textColor":"#1A1A1A","ctaBackgroundColor":"#6D28D9","ctaTextColor":"#FFFFFF","tagColor":"#6D28D9","coverHeadlineFontSize":32,"coverSubheadlineFontSize":14,"bodyHeadlineFontSize":24,"bodyParagraphFontSize":16,"ctaFontSize":28,"coverTextAlign":"left","bodyTextAlign":"left","padding":24,"chromeUsername":"","chromeFooterText":"ARRASTE PARA O LADO","headlineLineHeight":1.05,"bodyLineHeight":1.55,"headlineLetterSpacing":"-0.02em","bodyLetterSpacing":"0em","tagLetterSpacing":"0.1em","headlineFontWeight":900,"bodyFontWeight":400,"fontStyleDescription":"grotesco sans-serif; headlines bold/black compacto; corpo regular"}
 
 Responda APENAS com JSON no formato:
 {"styles": { ...campos SlideStyles... }}`
@@ -699,6 +773,9 @@ export async function montarPromptImagemSlide(params: {
 
   const tokensBlock = `Tokens obrigatórios no slide final: primária ${st.primaryColor}; fundo ${slideAtual.slide_type === 'cta' ? st.ctaBackgroundColor : st.backgroundColor}; texto principal ${slideAtual.slide_type === 'cta' ? st.ctaTextColor : st.textColor}; tag ${st.tagColor}; padding ~${st.padding}px; alinhamento título ${slideAtual.slide_type === 'body' ? st.bodyTextAlign : st.coverTextAlign}.`
 
+  const chromeBlockM = buildChromeBlock(st, slideAtual.slide_number, totalSlides)
+  const typographyBlockM = buildTypographyBlock(st)
+
   const imgParts = referenceImageUrls.length
     ? await fetchImageUrlsAsInlineParts(referenceImageUrls, 4)
     : []
@@ -708,16 +785,19 @@ export async function montarPromptImagemSlide(params: {
 
 TAREFA: escreva UM bloco de instruções em português (máx. 1300 caracteres) para um gerador de imagens criar UM slide NOVO que seja visualmente INDISTINGUÍVEL em estrutura desse sistema: mesmas zonas (topo/hero/rodapé), mesmo pareamento tipográfico (sans + serif itálico, etc.), mesma hierarquia de tamanhos, mesmas margens e ritmo — mas com o CONTEÚDO DE TEXTO abaixo (substitua qualquer placeholder das refs pelos textos reais).
 
-TEMA DO CARROSSEL: "${carousel.titulo}"
+TEMA DO CARROSSEL: “${carousel.titulo}”
 ${refUrlsBlock ? `${refUrlsBlock}\n` : ''}${refTextBlock ? `${refTextBlock}\n` : ''}
 
-SEQUÊNCIA (contexto): 
+SEQUÊNCIA (contexto):
 ${sequencia}
 
 SLIDE ATUAL (${slideAtual.slide_number}/${totalSlides}, tipo ${slideAtual.slide_type}): ${textoSlideParaResumo(slideAtual)}
 PAPEL: ${papel}
 
 ${tokensBlock}
+${chromeBlockM}
+
+${typographyBlockM}
 ${vizBrief}${refViz}
 
 O slide gerado deve parecer o “próximo slide” do mesmo template das imagens anexas. Mesmas zonas de layout e hierarquia dos outros slides do carrossel; só muda o motivo visual/foto secundária. PROIBIDO: moldura de celular, mockup de app, UI de ferramenta, poster de “guia” ou documentação como tema.
@@ -734,7 +814,7 @@ Responda só com o bloco de instruções, sem markdown nem título.`
 
   const prompt = `Você escreve UM único parágrafo em português (máx. 900 caracteres): direção criativa para gerar uma imagem ESTÁTICA de slide de carrossel Instagram (~4:5), já incluindo como organizar o espaço para os textos indicados.
 
-TEMA DO CARROSSEL: "${carousel.titulo}"
+TEMA DO CARROSSEL: “${carousel.titulo}”
 Descrição: ${carousel.descricao || 'não informada'}.
 Tom de voz: ${carousel.tomNome}${carousel.tomDescricao ? ` — ${carousel.tomDescricao}` : ''}.
 ${refUrlsBlock ? `${refUrlsBlock}\n` : ''}${refTextBlock ? `${refTextBlock}\n` : ''}
@@ -742,12 +822,15 @@ ${refUrlsBlock ? `${refUrlsBlock}\n` : ''}${refTextBlock ? `${refTextBlock}\n` :
 SEQUÊNCIA COMPLETA DO CARROSSEL (respeite início/meio/fim):
 ${sequencia}
 
-SLIDE A ILUSTRAR AGORA: número ${slideAtual.slide_number} de ${totalSlides}, tipo "${slideAtual.slide_type}".
+SLIDE A ILUSTRAR AGORA: número ${slideAtual.slide_number} de ${totalSlides}, tipo “${slideAtual.slide_type}”.
 Textos deste slide (devem aparecer na arte): ${textoSlideParaResumo(slideAtual)}
 
 PAPEL NA HISTÓRIA: ${papel}
 
 ${tokensBlock}
+${chromeBlockM}
+
+${typographyBlockM}
 ${vizBrief}${refViz}
 
 O layout deve obedecer à hierarquia e zonas descritas em “Análise estruturada” acima (se houver). Indistinguível em estrutura dos demais slides do mesmo carrossel (mesmo grid/margens); varie só imagem de apoio. PROIBIDO: smartphone/laptop/mockup; página de documentação como tema; citar frases literais de moodboards (“SUMMARY”, “GUIDELINES”).
@@ -1127,6 +1210,7 @@ Máximo ~320 palavras.`
 // Gera o slide COMPLETO como imagem — texto + design + visual integrados
 export async function gerarSlideCompleto(params: {
   slide: NodeSlide
+  totalSlides: number
   styles: SlideStyles
   visualBrief?: string
   referenceDescription: string
@@ -1137,6 +1221,7 @@ export async function gerarSlideCompleto(params: {
 }): Promise<string> {
   const {
     slide,
+    totalSlides,
     styles: s,
     visualBrief = '',
     referenceDescription,
@@ -1196,10 +1281,18 @@ export async function gerarSlideCompleto(params: {
     ? `\nFIDELIDADE_AO_DESIGN_SYSTEM: Siga as zonas de layout (ZONAS_DE_LAYOUT), pareamento tipográfico (TIPOGRAFIA) e hierarquia descritos na referência acima. O resultado deve parecer o mesmo “template” das imagens de referência da marca, apenas com o conteúdo textual deste slide.\n`
     : ''
 
-  const prompt = `Post estático para Instagram carrossel. UM ÚNICO quadro vertical ~4:5 (~1080x1350). Slide ${slide.slide_number}, tipo "${typeLabel}".
+  const chromeBlock = buildChromeBlock(s, slide.slide_number, totalSlides)
+  const typographyBlock = buildTypographyBlock(s)
+  const contextualImageBlock = deriveContextualImageInstruction(slide)
+
+  const prompt = `Post estático para Instagram carrossel. UM ÚNICO quadro vertical ~4:5 (~1080x1350). Slide ${slide.slide_number}, tipo “${typeLabel}”.
 
 ${userPixelsNote}CONTEÚDO VISUAL: ilustre o TEMA pelos TEXTOS abaixo — não mostre documentação, guias internos nem interfaces de ferramenta.
 ${narrativaNote}${dsFidelity}
+${chromeBlock}
+
+${typographyBlock}
+
 CORES E TOKENS (obrigatório):
 - Cor primária/destaque: ${s.primaryColor}
 ${ctaColors}
@@ -1207,7 +1300,7 @@ ${briefNote}${refNote}
 TEXTOS QUE DEVEM APARECER NA IMAGEM (exatamente):
 ${contentLines.join('\n') || 'Sem texto'}
 
-${consistenciaCarrossel}
+${contextualImageBlock ? `${contextualImageBlock}\n\n` : ''}${consistenciaCarrossel}
 LAYOUT: ${layoutDesc}
 Alinhamento: ${alignLabel}
 Padding: ${s.padding}px
@@ -1230,6 +1323,7 @@ REQUISITOS:
 /** Nova arte do mesmo slide: só muda fundo/camada visual; tipografia, cores de texto e diagramação idênticas à referência. */
 export async function gerarVariacaoFundoSlide(params: {
   slide: NodeSlide
+  totalSlides: number
   styles: SlideStyles
   visualBrief?: string
   referenceDescription: string
@@ -1240,6 +1334,7 @@ export async function gerarVariacaoFundoSlide(params: {
 }): Promise<string> {
   const {
     slide,
+    totalSlides,
     styles: s,
     visualBrief = '',
     referenceDescription,
@@ -1306,6 +1401,9 @@ export async function gerarVariacaoFundoSlide(params: {
     ? `\nNOVO FUNDO / DIREÇÃO (aplicar só na camada visual atrás do texto):\n${narrativaVisual.trim()}\n`
     : ''
 
+  const chromeBlockV = buildChromeBlock(s, slide.slide_number, totalSlides)
+  const typographyBlockV = buildTypographyBlock(s)
+
   const prompt = `VARIAÇÃO DE FUNDO DO MESMO SLIDE (Instagram carrossel ~4:5). Slide ${slide.slide_number}, tipo "${typeLabel}".
 
 ${imgRoles}REGRAS ABSOLUTAS:
@@ -1315,6 +1413,10 @@ ${imgRoles}REGRAS ABSOLUTAS:
 - PROIBIDO: smartphone mockup, UI, documentação como tema.
 
 ${narrativaNote}
+${chromeBlockV}
+
+${typographyBlockV}
+
 CORES E TOKENS (texto — obrigatório respeitar):
 - Cor primária/destaque: ${s.primaryColor}
 ${ctaColors}
