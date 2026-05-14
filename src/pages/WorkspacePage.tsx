@@ -1,4 +1,6 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import {
   ReactFlow,
   Background,
@@ -16,6 +18,8 @@ import MainNode from '../components/nodes/MainNode'
 import SlideNode from '../components/nodes/SlideNode'
 import RegenerateTextModal from '../components/modals/RegenerateTextModal'
 import GenerateImageModal from '../components/modals/GenerateImageModal'
+import Spinner from '../components/ui/Spinner'
+import Badge from '../components/ui/Badge'
 import { useCarousels } from '../hooks/useCarousels'
 import { useCarouselSlides } from '../hooks/useCarouselSlides'
 import { gerarRoteirosNodes, generateSlideImage } from '../lib/gemini'
@@ -31,33 +35,65 @@ const MAIN_NODE_Y = 0
 const SLIDE_OFFSET_Y = 480
 const SLIDE_GAP_X = 340
 
-export default function WorkspacePage() {
-  const { criar: criarCarousel, atualizarStatus } = useCarousels()
+const STATUS_LABELS: Record<string, string> = {
+  draft: 'Rascunho',
+  generating: 'Gerando...',
+  ready: 'Pronto',
+  published: 'Publicado',
+}
+const STATUS_VARIANTS: Record<string, 'default' | 'alert' | 'success'> = {
+  draft: 'default',
+  generating: 'alert',
+  ready: 'success',
+  published: 'default',
+}
 
-  const [carouselId, setCarouselId] = useState<string | null>(null)
-  const { slides, inserirSlides, editarTexto, resetarTexto, atualizarImagem, atualizarTextoRegenerado, buscarHistorico } = useCarouselSlides(carouselId ?? '')
+export default function WorkspacePage() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const isNew = !id || id === 'novo'
+
+  const { criar: criarCarousel, atualizarStatus, getById, carousels } = useCarousels()
+
+  const [carouselId, setCarouselId] = useState<string | null>(isNew ? null : (id ?? null))
+  const { slides, loading: slidesLoading, inserirSlides, editarTexto, resetarTexto, atualizarImagem, atualizarTextoRegenerado, buscarHistorico } = useCarouselSlides(carouselId ?? '')
 
   const [slideStyles, setSlideStyles] = useState<SlideStyles>(DEFAULT_SLIDE_STYLES)
-  // ref para acesso nas closures de refreshSlideNode sem ficar stale
   const slideStylesRef = useRef<SlideStyles>(DEFAULT_SLIDE_STYLES)
+  const slidesInitialized = useRef(false)
 
   const [, setGenerating] = useState(false)
-
   const [regenModal, setRegenModal] = useState<{ slideId: string; campo: string; textoAtual: string; slideType: string; historico: ReturnType<typeof buscarHistorico> extends Promise<infer T> ? T : never } | null>(null)
   const [regenHistorico, setRegenHistorico] = useState<{ id: string; new_value: string | null; created_at: string }[]>([])
-
   const [imageModal, setImageModal] = useState<{ slideId: string; promptInicial: string } | null>(null)
 
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([
-    {
+  // Quando abrindo workspace existente: carrega estilos do carrossel
+  useEffect(() => {
+    if (isNew || !carouselId) return
+    const car = getById(carouselId)
+    if (!car) return
+    if (car.styles) {
+      setSlideStyles(car.styles)
+      slideStylesRef.current = car.styles
+    }
+  }, [carousels, isNew, carouselId]) // eslint-disable-line
+
+  // Quando slides carregam para workspace existente: renderiza os nodes
+  useEffect(() => {
+    if (isNew || slidesInitialized.current || slides.length === 0) return
+    slidesInitialized.current = true
+    renderizarSlideNodes(slides, slideStylesRef.current)
+  }, [slides]) // eslint-disable-line
+
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(
+    isNew ? [{
       id: MAIN_NODE_ID,
       type: 'mainNode',
       position: { x: MAIN_NODE_X, y: MAIN_NODE_Y },
       data: { onGerar: handleGerar, gerating: false },
-    },
-  ])
+    }] : []
+  )
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
-
   const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge(params, eds)), [setEdges])
 
   async function handleGerar(params: {
@@ -77,18 +113,6 @@ export default function WorkspacePage() {
     setNodes((nds) => nds.map((n) => n.id === MAIN_NODE_ID ? { ...n, data: { ...n.data, gerating: true } } : n))
 
     try {
-      const carousel = await criarCarousel({
-        title: params.titulo,
-        description: params.descricao || null,
-        references_urls: params.referencesUrls,
-        references_text: params.referencesText || null,
-        total_slides: params.totalSlides,
-        design_system_id: params.designSystemId || null,
-        tone_of_voice_id: params.tomId || null,
-      })
-      setCarouselId(carousel.id)
-      await atualizarStatus(carousel.id, 'generating')
-
       const script = await gerarRoteirosNodes({
         titulo: params.titulo,
         descricao: params.descricao,
@@ -100,10 +124,22 @@ export default function WorkspacePage() {
         totalSlides: params.totalSlides,
       })
 
-      // Salva estilos extraídos do design system
       const estilos = script.styles ?? DEFAULT_SLIDE_STYLES
       setSlideStyles(estilos)
       slideStylesRef.current = estilos
+
+      const carousel = await criarCarousel({
+        title: params.titulo,
+        description: params.descricao || null,
+        references_urls: params.referencesUrls,
+        references_text: params.referencesText || null,
+        total_slides: params.totalSlides,
+        design_system_id: params.designSystemId || null,
+        tone_of_voice_id: params.tomId || null,
+        styles: estilos,
+      })
+      setCarouselId(carousel.id)
+      await atualizarStatus(carousel.id, 'generating')
 
       const slidesParaInserir = script.slides.map((s) => ({
         carousel_id: carousel.id,
@@ -133,6 +169,9 @@ export default function WorkspacePage() {
 
       renderizarSlideNodes(novosSlides, estilos)
 
+      // Atualiza URL sem re-montar
+      window.history.replaceState(null, '', `/workspace/${carousel.id}`)
+
       if (params.autoGerarImagens) {
         gerarImagensEmBackground(novosSlides, carousel.id).catch(console.error)
       }
@@ -146,17 +185,15 @@ export default function WorkspacePage() {
   }
 
   async function gerarImagensEmBackground(slidesList: CarouselSlide[], cId: string) {
-    // Marca todos os slides como "gerando imagem"
-    setNodes((nds) => nds.map((n) => {
-      if (!n.id.startsWith('slide-')) return n
-      return { ...n, data: { ...n.data, imageGenerating: true } }
-    }))
+    setNodes((nds) => nds.map((n) =>
+      n.id.startsWith('slide-') ? { ...n, data: { ...n.data, imageGenerating: true } } : n
+    ))
 
     await Promise.allSettled(
       slidesList.map(async (slide) => {
         const promptBase = [slide.headline, slide.body_paragraph, slide.cta_message, slide.tag_text]
           .filter(Boolean).join('. ')
-        const prompt = `${promptBase}. Estilo editorial Instagram, proporção 4:5, sem texto na imagem, fotografia ou ilustração.`
+        const prompt = `${promptBase}. Estilo editorial Instagram, proporção 4:5, sem texto na imagem.`
         try {
           const dataUrl = await generateSlideImage(prompt)
           const path = `${cId}/${slide.id}/auto.jpg`
@@ -168,13 +205,10 @@ export default function WorkspacePage() {
             const { data: urlData } = supabase.storage.from('carousel-images').getPublicUrl(storageData.path)
             await atualizarImagem(slide.id, urlData.publicUrl, 'generated', prompt)
           }
-        } catch {
-          // falha silenciosa por slide individual
-        } finally {
-          setNodes((nds) => nds.map((n) => {
-            if (n.id !== `slide-${slide.id}`) return n
-            return { ...n, data: { ...n.data, imageGenerating: false } }
-          }))
+        } catch { /* falha silenciosa por slide */ } finally {
+          setNodes((nds) => nds.map((n) =>
+            n.id === `slide-${slide.id}` ? { ...n, data: { ...n.data, imageGenerating: false } } : n
+          ))
           refreshSlideNode(slide.id)
         }
       })
@@ -197,18 +231,21 @@ export default function WorkspacePage() {
     const novosNodes: Node[] = slidesList.map((slide, i) => ({
       id: `slide-${slide.id}`,
       type: 'slideNode',
-      position: { x: startX + i * SLIDE_GAP_X, y: MAIN_NODE_Y + SLIDE_OFFSET_Y },
+      position: { x: startX + i * SLIDE_GAP_X, y: isNew ? MAIN_NODE_Y + SLIDE_OFFSET_Y : MAIN_NODE_Y },
       data: buildSlideData(slide, estilos, slidesList.length),
     }))
 
-    const novosEdges: Edge[] = slidesList.map((slide) => ({
+    const novosEdges: Edge[] = isNew ? slidesList.map((slide) => ({
       id: `edge-main-${slide.id}`,
       source: MAIN_NODE_ID,
       target: `slide-${slide.id}`,
       style: { stroke: '#6D28D9', strokeWidth: 1.5, opacity: 0.4 },
-    }))
+    })) : []
 
-    setNodes((nds) => [nds.find((n) => n.id === MAIN_NODE_ID)!, ...novosNodes])
+    setNodes((nds) => {
+      const mainNode = nds.find((n) => n.id === MAIN_NODE_ID)
+      return mainNode ? [mainNode, ...novosNodes] : novosNodes
+    })
     setEdges(novosEdges)
   }
 
@@ -278,8 +315,44 @@ export default function WorkspacePage() {
     refreshSlideNode(imageModal.slideId)
   }
 
+  const carouselInfo = !isNew && carouselId ? getById(carouselId) : null
+
   return (
-    <div className="w-full h-[calc(100vh-64px)]">
+    <div className="w-full h-[calc(100vh-64px)] relative">
+
+      {/* Barra de info para workspace existente */}
+      {!isNew && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur-sm rounded-xl border border-neutral-100 shadow-md px-4 py-2.5 flex items-center gap-3 min-w-0 max-w-md">
+          <button
+            onClick={() => navigate('/workspace')}
+            className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors flex-shrink-0"
+          >
+            <ArrowLeft size={15} />
+          </button>
+          <p className="text-body-md font-semibold text-neutral-900 truncate flex-1 min-w-0">
+            {carouselInfo?.title ?? '…'}
+          </p>
+          {carouselInfo && (
+            <>
+              <Badge variant={STATUS_VARIANTS[carouselInfo.status] ?? 'default'}>
+                {STATUS_LABELS[carouselInfo.status] ?? carouselInfo.status}
+              </Badge>
+              <span className="text-[11px] text-neutral-400 flex-shrink-0">
+                {carouselInfo.total_slides} slides
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Loading de slides para workspace existente */}
+      {!isNew && slidesLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-20">
+          <Spinner size="lg" />
+          <p className="ml-3 text-body-md text-neutral-600">Carregando workspace…</p>
+        </div>
+      )}
+
       <ReactFlow
         nodes={nodes}
         edges={edges}

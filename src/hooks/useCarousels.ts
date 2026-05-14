@@ -29,7 +29,7 @@ export function useCarousels() {
 
   useEffect(() => { carregar() }, [carregar])
 
-  async function criar(dados: Pick<Carousel, 'title' | 'description' | 'references_urls' | 'references_text' | 'total_slides' | 'design_system_id' | 'tone_of_voice_id'>) {
+  async function criar(dados: Pick<Carousel, 'title' | 'description' | 'references_urls' | 'references_text' | 'total_slides' | 'design_system_id' | 'tone_of_voice_id' | 'styles'>) {
     const { data, error } = await supabase
       .from('carousels')
       .insert({ ...dados, status: 'draft', version: 1 })
@@ -39,6 +39,18 @@ export function useCarousels() {
     const novo = data as Carousel
     setCarousels((prev) => [novo, ...prev])
     return novo
+  }
+
+  async function editar(id: string, dados: Partial<Omit<Carousel, 'id' | 'created_at' | 'updated_at'>>) {
+    const { data, error } = await supabase
+      .from('carousels')
+      .update(dados)
+      .eq('id', id)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    setCarousels((prev) => prev.map((c) => (c.id === id ? (data as Carousel) : c)))
+    return data as Carousel
   }
 
   async function atualizarStatus(id: string, status: Carousel['status']) {
@@ -77,5 +89,5 @@ export function useCarousels() {
     return carousels.find((c) => c.id === id)
   }
 
-  return { carousels, loading, error, criar, atualizarStatus, novaVersao, excluir, getById, recarregar: carregar }
+  return { carousels, loading, error, criar, editar, atualizarStatus, novaVersao, excluir, getById, recarregar: carregar }
 }

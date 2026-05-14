@@ -9,6 +9,7 @@ import CriativoDetailPage from './pages/CriativoDetailPage'
 import AgendaPage from './pages/AgendaPage'
 import TodosPage from './pages/TodosPage'
 import TomDeVozPage from './pages/TomDeVozPage'
+import WorkspacesPage from './pages/WorkspacesPage'
 import WorkspacePage from './pages/WorkspacePage'
 import DesignSystemsPage from './pages/DesignSystemsPage'
 
@@ -23,7 +24,9 @@ export const router = createBrowserRouter([
       { path: 'criativos', element: <CriativosPage /> },
       { path: 'criativos/novo', element: <CriativoNovoPage /> },
       { path: 'criativos/:id', element: <CriativoDetailPage /> },
-      { path: 'workspace', element: <WorkspacePage /> },
+      { path: 'workspace', element: <WorkspacesPage /> },
+      { path: 'workspace/novo', element: <WorkspacePage /> },
+      { path: 'workspace/:id', element: <WorkspacePage /> },
       { path: 'design-systems', element: <DesignSystemsPage /> },
       { path: 'tom-de-voz', element: <TomDeVozPage /> },
       { path: 'agenda', element: <AgendaPage /> },

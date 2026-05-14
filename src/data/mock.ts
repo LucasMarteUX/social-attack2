@@ -127,6 +127,7 @@ export interface Carousel {
   status: 'draft' | 'generating' | 'ready' | 'published'
   version: number
   parent_carousel_id: string | null
+  styles: SlideStyles | null
   created_at: string
   updated_at: string
 }
