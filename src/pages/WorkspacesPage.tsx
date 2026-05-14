@@ -8,6 +8,7 @@ import Input from '../components/ui/Input'
 import Badge from '../components/ui/Badge'
 import { useCarousels } from '../hooks/useCarousels'
 import { useAgenda } from '../hooks/useAgenda'
+import { useToast } from '../components/ui/Toast'
 import { supabase } from '../lib/supabase'
 import type { Carousel } from '../data/mock'
 
@@ -32,6 +33,7 @@ export default function WorkspacesPage() {
   const navigate = useNavigate()
   const { carousels, loading, excluir, editar, recarregar } = useCarousels()
   const { criar: criarAgendamento } = useAgenda()
+  const toast = useToast()
 
   const [editando, setEditando] = useState<Carousel | null>(null)
   const [tituloEdit, setTituloEdit] = useState('')
@@ -62,8 +64,11 @@ export default function WorkspacesPage() {
       setAgHora('09:00')
       setAgPlataforma('instagram')
       setAgNotas('')
+      toast.success('Workflow agendado com sucesso!')
+      navigate('/agenda')
     } catch (e) {
       console.error(e)
+      toast.error('Erro ao agendar. Tente novamente.')
     } finally {
       setAgSalvando(false)
     }
@@ -103,8 +108,10 @@ export default function WorkspacesPage() {
       }
 
       recarregar()
+      toast.success('Workspace duplicado com sucesso!')
     } catch (e) {
       console.error(e)
+      toast.error('Erro ao duplicar workspace.')
     } finally {
       setDuplicandoId(null)
     }
@@ -114,6 +121,7 @@ export default function WorkspacesPage() {
     if (!editando || !tituloEdit.trim()) return
     await editar(editando.id, { title: tituloEdit.trim() })
     setEditando(null)
+    toast.success('Título atualizado.')
   }
 
   return (
@@ -238,7 +246,7 @@ export default function WorkspacesPage() {
           <Button variant="ghost" onClick={() => setExcluindo(null)}>Cancelar</Button>
           <Button
             variant="destructive"
-            onClick={() => { if (excluindo) excluir(excluindo.id); setExcluindo(null) }}
+            onClick={() => { if (excluindo) { excluir(excluindo.id); toast.info('Workspace excluído.') } setExcluindo(null) }}
           >
             Excluir
           </Button>

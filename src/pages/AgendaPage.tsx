@@ -203,20 +203,26 @@ export default function AgendaPage() {
                       </div>
                       <div className="flex flex-col gap-1">
                         {d.eventos.slice(0, 2).map((e) => {
-                          const cat = e.criativo_id ? getCategoriaByCriativo(e.criativo_id) : null
-                          const cri = e.criativo_id ? getCriativo(e.criativo_id) : null
+                          const isCarouselEvt = !!e.carousel_id
+                          const carouselEvt = isCarouselEvt ? carousels.find((c) => c.id === e.carousel_id) : null
+                          const cat = !isCarouselEvt && e.criativo_id ? getCategoriaByCriativo(e.criativo_id) : null
+                          const cri = !isCarouselEvt && e.criativo_id ? getCriativo(e.criativo_id) : null
+                          const label = isCarouselEvt ? (carouselEvt?.title ?? 'Workflow') : (cri?.titulo ?? 'Post')
                           return (
                             <button
                               key={e.id}
-                              onClick={() => cri && navigate(`/criativos/${cri.id}`)}
+                              onClick={() => {
+                                if (isCarouselEvt && carouselEvt) navigate(`/workspace/${carouselEvt.id}`)
+                                else if (cri) navigate(`/criativos/${cri.id}`)
+                              }}
                               className="w-full text-left px-1.5 py-0.5 rounded-md text-[10px] font-semibold truncate transition-opacity hover:opacity-80"
                               style={{
-                                backgroundColor: cat ? `${cat.cor}1A` : '#F4F4F4',
-                                color: cat?.cor ?? '#525252',
+                                backgroundColor: isCarouselEvt ? '#EDE9FE' : (cat ? `${cat.cor}1A` : '#F4F4F4'),
+                                color: isCarouselEvt ? '#6D28D9' : (cat?.cor ?? '#525252'),
                               }}
-                              title={cri?.titulo}
+                              title={label}
                             >
-                              {cri?.titulo ?? 'Post'}
+                              {label}
                             </button>
                           )
                         })}
