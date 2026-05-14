@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, ExternalLink, Copy, Trash2, Pencil, Workflow, Layers, Clock } from 'lucide-react'
+import { Plus, ExternalLink, Copy, Trash2, Pencil, Workflow, Clock } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Spinner from '../components/ui/Spinner'
 import Modal from '../components/ui/Modal'
@@ -16,11 +16,11 @@ const STATUS_LABELS: Record<string, string> = {
   ready: 'Pronto',
   published: 'Publicado',
 }
-const STATUS_VARIANTS: Record<string, 'default' | 'alert' | 'success'> = {
-  draft: 'default',
+const STATUS_VARIANTS: Record<string, 'neutral' | 'alert' | 'success'> = {
+  draft: 'neutral',
   generating: 'alert',
   ready: 'success',
-  published: 'default',
+  published: 'neutral',
 }
 
 function formatDate(iso: string) {

@@ -41,11 +41,11 @@ const STATUS_LABELS: Record<string, string> = {
   ready: 'Pronto',
   published: 'Publicado',
 }
-const STATUS_VARIANTS: Record<string, 'default' | 'alert' | 'success'> = {
-  draft: 'default',
+const STATUS_VARIANTS: Record<string, 'neutral' | 'alert' | 'success'> = {
+  draft: 'neutral',
   generating: 'alert',
   ready: 'success',
-  published: 'default',
+  published: 'neutral',
 }
 
 export default function WorkspacePage() {
@@ -58,7 +58,7 @@ export default function WorkspacePage() {
   const [carouselId, setCarouselId] = useState<string | null>(isNew ? null : (id ?? null))
   const { slides, loading: slidesLoading, inserirSlides, editarTexto, resetarTexto, atualizarImagem, atualizarTextoRegenerado, buscarHistorico } = useCarouselSlides(carouselId ?? '')
 
-  const [slideStyles, setSlideStyles] = useState<SlideStyles>(DEFAULT_SLIDE_STYLES)
+  const [, setSlideStyles] = useState<SlideStyles>(DEFAULT_SLIDE_STYLES)
   const slideStylesRef = useRef<SlideStyles>(DEFAULT_SLIDE_STYLES)
   const slidesInitialized = useRef(false)
 
