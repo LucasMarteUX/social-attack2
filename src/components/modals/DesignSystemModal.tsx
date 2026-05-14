@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, type ChangeEvent } from 'react'
-import { Upload, X, ImageIcon } from 'lucide-react'
+import { useState, useEffect, type ChangeEvent } from 'react'
+import { X, ImageIcon } from 'lucide-react'
 import Modal from '../ui/Modal'
 import Input from '../ui/Input'
 import Button from '../ui/Button'
@@ -56,7 +56,6 @@ export default function DesignSystemModal({ open, onClose, onSave, inicial }: Pr
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (inicial) {
@@ -142,7 +141,7 @@ export default function DesignSystemModal({ open, onClose, onSave, inicial }: Pr
               </label>
               <p className="text-[11px] text-neutral-400 mt-0.5">
                 Imagens para orientar estilo na geração (cores, ritmo, hierarquia). Não serão copiadas literalmente.
-                Em celulares, use o botão abaixo para abrir a galeria — é mais confiável dentro do modal.
+                Use o controle nativo abaixo — evita bloqueios do navegador dentro da página.
               </p>
             </div>
           </div>
@@ -179,21 +178,18 @@ export default function DesignSystemModal({ open, onClose, onSave, inicial }: Pr
           )}
 
           <input
-            ref={fileInputRef}
             type="file"
-            accept="image/*,.heic,.heif"
+            accept="image/*"
             multiple
-            className="hidden"
             onChange={handleFiles}
+            className="block w-full text-[11px] text-neutral-600
+              file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-dashed file:border-neutral-300
+              file:bg-neutral-50 file:px-3 file:py-2 file:text-[11px] file:font-medium file:text-neutral-700
+              hover:file:bg-neutral-100 file:inline-flex file:items-center"
           />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center justify-center gap-2 py-2.5 rounded-lg border border-dashed border-neutral-200 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 cursor-pointer transition-colors w-full"
-          >
-            <Upload size={14} />
-            Escolher imagens de referência
-          </button>
+          {pendingFiles.length === 0 && (
+            <p className="text-[10px] text-neutral-400">Nenhum arquivo novo selecionado. Depois de escolher, salve o design system.</p>
+          )}
         </div>
 
         <div className="flex justify-end gap-3 pt-2 border-t border-neutral-100">
