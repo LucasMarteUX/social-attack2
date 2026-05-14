@@ -20,6 +20,7 @@ interface FullSlideBundle {
   allSlides: NodeSlide[]
   visualBrief?: string
   referenceDescription: string
+  referenceImageUrls?: string[]
 }
 
 interface Props {
@@ -74,6 +75,7 @@ export default function GenerateImageModal({
         styles: fs.styles,
         visualBrief: fs.visualBrief,
         referenceDescription: fs.referenceDescription,
+        referenceImageUrls: fs.referenceImageUrls,
       })
       setPromptCriativo(texto)
     } catch (e) {

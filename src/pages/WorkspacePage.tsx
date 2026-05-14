@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft } from 'lucide-react'
 import {
@@ -392,6 +392,7 @@ export default function WorkspacePage() {
           visualBrief,
           referenceDescription,
           carousel: carouselPromptCtx,
+          referenceImageUrls: refUrls,
         }).catch((e) => {
           console.error(e)
           setAvisoImagens(e instanceof Error ? e.message : 'Falha ao gerar imagens em segundo plano.')
@@ -418,6 +419,7 @@ export default function WorkspacePage() {
       visualBrief: string
       referenceDescription: string
       carousel: CarouselImagePromptContext
+      referenceImageUrls: string[]
     }
   ) {
     const todosNodes = slidesList.map(carouselSlideToNodeSlide)
@@ -441,6 +443,7 @@ export default function WorkspacePage() {
             styles: ctx.styles,
             visualBrief: ctx.visualBrief.trim() || undefined,
             referenceDescription: ctx.referenceDescription,
+            referenceImageUrls: ctx.referenceImageUrls,
           })
         } catch (err) {
           console.error('montarPromptImagemSlide', slide.slide_number, err)
@@ -630,6 +633,15 @@ export default function WorkspacePage() {
   }
 
   const carouselInfo = !isNew && carouselId ? getById(carouselId) : null
+
+  const designSystemRefImageUrls = useMemo(() => {
+    if (!carouselId) return [] as string[]
+    const car = carousels.find((c) => c.id === carouselId)
+    if (!car?.design_system_id) return []
+    const ds = designSystems.find((d) => d.id === car.design_system_id)
+    return [...(ds?.reference_image_urls ?? [])]
+  }, [carouselId, carousels, designSystems])
+
   const modalSlide = imageModal ? slides.find((s) => s.id === imageModal.slideId) : undefined
   const carouselCtxModal = montarContextoCarrosselParaImagem()
 
@@ -725,6 +737,7 @@ export default function WorkspacePage() {
             allSlides: slides.map(carouselSlideToNodeSlide),
             visualBrief: visualBriefRef.current || undefined,
             referenceDescription: visualRefDescRef.current,
+            referenceImageUrls: designSystemRefImageUrls,
           }}
           onConfirmar={handleConfirmarImagem}
         />

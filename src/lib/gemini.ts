@@ -38,9 +38,12 @@ export interface ReferenciaItem {
   nome: string
 }
 
-async function callGemini(prompt: string, useSearch = false): Promise<string> {
+async function postGeminiParts(
+  parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }>,
+  useSearch = false
+): Promise<string> {
   const body: Record<string, unknown> = {
-    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    contents: [{ role: 'user', parts }],
   }
   if (useSearch) {
     body.tools = [{ google_search: {} }]
@@ -95,6 +98,36 @@ async function callGemini(prompt: string, useSearch = false): Promise<string> {
     throw new Error('Gemini retornou texto vazio (possível bloqueio ou erro no modelo).')
   }
   return text
+}
+
+async function callGemini(prompt: string, useSearch = false): Promise<string> {
+  return postGeminiParts([{ text: prompt }], useSearch)
+}
+
+async function fetchImageUrlsAsInlineParts(
+  urls: string[],
+  max = 4
+): Promise<Array<{ inlineData: { mimeType: string; data: string } }>> {
+  const settled = await Promise.allSettled(
+    urls.slice(0, max).map(async (url) => {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(String(res.status))
+      const blob = await res.blob()
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onloadend = () => {
+          const result = reader.result as string
+          resolve(result.split(',')[1])
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(blob)
+      })
+      return { inlineData: { mimeType: blob.type || 'image/jpeg', data: base64 } }
+    })
+  )
+  return settled
+    .filter((r): r is PromiseFulfilledResult<{ inlineData: { mimeType: string; data: string } }> => r.status === 'fulfilled')
+    .map((r) => r.value)
 }
 
 function extrairObjetoBalanceado(s: string, abre: '{' | '['): string | null {
@@ -444,7 +477,7 @@ function textoSlideParaResumo(s: NodeSlide): string {
   return parts.join(' · ') || '(sem texto)'
 }
 
-/** Gera o trecho criativo (Gemini texto) que orienta o Imagen para UM slide, com arco narrativo. */
+/** Gera o trecho criativo (Gemini texto ou visão) que orienta o Imagen para UM slide, com arco narrativo. */
 export async function montarPromptImagemSlide(params: {
   carousel: CarouselImagePromptContext
   todosSlides: NodeSlide[]
@@ -453,8 +486,19 @@ export async function montarPromptImagemSlide(params: {
   styles: SlideStyles
   visualBrief?: string
   referenceDescription: string
+  /** URLs das imagens de referência do design system — quando há, o Gemini vê os pixels e descreve layout fiel ao DS */
+  referenceImageUrls?: string[]
 }): Promise<string> {
-  const { carousel, todosSlides, slideAtual, totalSlides, styles: st, visualBrief = '', referenceDescription } = params
+  const {
+    carousel,
+    todosSlides,
+    slideAtual,
+    totalSlides,
+    styles: st,
+    visualBrief = '',
+    referenceDescription,
+    referenceImageUrls = [],
+  } = params
 
   const refUrlsBlock =
     carousel.referencesUrls.length > 0
@@ -477,13 +521,48 @@ export async function montarPromptImagemSlide(params: {
       : 'Meio: desenvolver um argumento da sequência; não repetir a capa; avançar a narrativa.'
 
   const vizBrief = visualBrief.trim()
-    ? `\nResumo visual da marca (tokens abstratos):\n${visualBrief}\n`
+    ? `\nResumo textual do guia de marca (Markdown resumido):\n${visualBrief}\n`
     : ''
   const refViz = referenceDescription.trim()
-    ? `\nExtração de ESTILO das imagens de referência (use só paleta, ritmo, grid, hierarquia — não copie assunto “documentação” nem texto de guias):\n${referenceDescription}\n`
+    ? `\nAnálise estruturada das imagens de referência do DS (tipografia, zonas, hierarquia — siga à risca):\n${referenceDescription}\n`
     : ''
 
-  const prompt = `Você escreve UM único parágrafo em português (máx. 850 caracteres): direção criativa para gerar uma imagem ESTÁTICA de slide de carrossel Instagram (~4:5), já incluindo como organizar o espaço para os textos indicados.
+  const tokensBlock = `Tokens obrigatórios no slide final: primária ${st.primaryColor}; fundo ${slideAtual.slide_type === 'cta' ? st.ctaBackgroundColor : st.backgroundColor}; texto principal ${slideAtual.slide_type === 'cta' ? st.ctaTextColor : st.textColor}; tag ${st.tagColor}; padding ~${st.padding}px; alinhamento título ${slideAtual.slide_type === 'body' ? st.bodyTextAlign : st.coverTextAlign}.`
+
+  const imgParts = referenceImageUrls.length
+    ? await fetchImageUrlsAsInlineParts(referenceImageUrls, 4)
+    : []
+
+  if (imgParts.length > 0) {
+    const visionPrompt = `Você vê as imagens anexadas: são o padrão visual oficial (design system) de slides de carrossel Instagram 4:5.
+
+TAREFA: escreva UM bloco de instruções em português (máx. 1300 caracteres) para um gerador de imagens criar UM slide NOVO que seja visualmente INDISTINGUÍVEL em estrutura desse sistema: mesmas zonas (topo/hero/rodapé), mesmo pareamento tipográfico (sans + serif itálico, etc.), mesma hierarquia de tamanhos, mesmas margens e ritmo — mas com o CONTEÚDO DE TEXTO abaixo (substitua qualquer placeholder das refs pelos textos reais).
+
+TEMA DO CARROSSEL: "${carousel.titulo}"
+${refUrlsBlock ? `${refUrlsBlock}\n` : ''}${refTextBlock ? `${refTextBlock}\n` : ''}
+
+SEQUÊNCIA (contexto): 
+${sequencia}
+
+SLIDE ATUAL (${slideAtual.slide_number}/${totalSlides}, tipo ${slideAtual.slide_type}): ${textoSlideParaResumo(slideAtual)}
+PAPEL: ${papel}
+
+${tokensBlock}
+${vizBrief}${refViz}
+
+O slide gerado deve parecer o “próximo slide” do mesmo template das imagens anexas. PROIBIDO: moldura de celular, mockup de app, UI de ferramenta, poster de “guia” ou documentação como tema.
+
+Responda só com o bloco de instruções, sem markdown nem título.`
+
+    try {
+      const text = (await postGeminiParts([...imgParts, { text: visionPrompt }])).trim()
+      return text.length > 1350 ? text.slice(0, 1347) + '…' : text
+    } catch {
+      /* cai no fluxo texto */
+    }
+  }
+
+  const prompt = `Você escreve UM único parágrafo em português (máx. 900 caracteres): direção criativa para gerar uma imagem ESTÁTICA de slide de carrossel Instagram (~4:5), já incluindo como organizar o espaço para os textos indicados.
 
 TEMA DO CARROSSEL: "${carousel.titulo}"
 Descrição: ${carousel.descricao || 'não informada'}.
@@ -498,16 +577,15 @@ Textos deste slide (devem aparecer na arte): ${textoSlideParaResumo(slideAtual)}
 
 PAPEL NA HISTÓRIA: ${papel}
 
-RESTRIÇÕES DE MARCA (cores/tokens — não transforme em “prints” nem UI):
-- primária ${st.primaryColor}; fundo slide ${slideAtual.slide_type === 'cta' ? st.ctaBackgroundColor : st.backgroundColor}; texto principal ${slideAtual.slide_type === 'cta' ? st.ctaTextColor : st.textColor}; padding ~${st.padding}px.
+${tokensBlock}
 ${vizBrief}${refViz}
 
-PROIBIDO na sua descrição e na imagem desejada: smartphone/laptop/mockup/moldura de tela; página ou poster que simule “guia de design system” ou documentação como tema principal; citar frases literais de moodboards (“SUMMARY”, “VISUAL GUIDELINES”, etc.).
+O layout deve obedecer à hierarquia e zonas descritas em “Análise estruturada” acima (se houver). PROIBIDO: smartphone/laptop/mockup; página de documentação como tema; citar frases literais de moodboards (“SUMMARY”, “GUIDELINES”).
 
 Responda só com o parágrafo criativo, sem título nem markdown.`
 
   const text = (await callGemini(prompt, carousel.referencesUrls.length > 0)).trim()
-  return text.length > 900 ? text.slice(0, 897) + '…' : text
+  return text.length > 950 ? text.slice(0, 947) + '…' : text
 }
 
 export async function gerarRoteirosNodes(params: {
@@ -679,67 +757,46 @@ export async function generateSlideImage(
 }
 
 // Analisa imagens de referência do design system com visão do Gemini
-// Retorna uma descrição textual do estilo visual para usar no prompt do Imagen
+// Retorna descrição estruturada (tipografia, zonas, hierarquia) para o Imagen
 export async function analisarReferenciasVisuais(imageUrls: string[]): Promise<string> {
   if (!imageUrls.length) return ''
 
-  const imageParts = await Promise.allSettled(
-    imageUrls.slice(0, 4).map(async (url) => {
-      const res = await fetch(url)
-      const blob = await res.blob()
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          const result = reader.result as string
-          resolve(result.split(',')[1])
-        }
-        reader.onerror = reject
-        reader.readAsDataURL(blob)
-      })
-      return { inlineData: { mimeType: blob.type || 'image/jpeg', data: base64 } }
-    })
-  )
-
-  const validParts = imageParts
-    .filter((r): r is PromiseFulfilledResult<{ inlineData: { mimeType: string; data: string } }> => r.status === 'fulfilled')
-    .map((r) => r.value)
-
+  const validParts = await fetchImageUrlsAsInlineParts(imageUrls, 4)
   if (!validParts.length) return ''
 
-  const body = {
-    contents: [{
-      role: 'user',
-      parts: [
-        ...validParts,
-        {
-          text: `Estas imagens são referência de ESTILO para posts estáticos de carrossel Instagram (quadro 4:5). O produto final NÃO deve reproduzir o assunto “documentação” dos prints.
+  const instruction = `Estas imagens são o DESIGN SYSTEM visual de referência para slides de carrossel Instagram (~4:5). O gerador de imagens deve REPLICAR a mesma lógica de layout e tipografia (não copiar texto literal “Lorem”, nem marca de terceiros).
 
-PARTE 1 — Extraia só tokens reutilizáveis:
-- paleta (fundo, texto, acento), contraste
-- hierarquia tipográfica relativa (pesos, tamanhos relativos, entrelinha)
-- margens, grid, densidade, alinhamentos predominantes
-- ritmo editorial (foto grande vs bloco de texto vs detalhes gráficos genéricos)
-- tratamento de imagem (ex.: retrato em estúdio, textura, geometria decorativa abstrata)
+Responda em português com estas seções (use os títulos exatos):
 
-PARTE 2 — Uma linha: “Tradução para cenário editorial” (ex.: retrato minimal alto contraste / lifestyle natural / tipografia dominante), sem nomear documentação.
+TIPOGRAFIA:
+- Pareamento de fontes (ex.: sans-serif bold para título + serif itálico para destaque; tamanhos relativos entre tag, headline, corpo)
+- Uso de caps, tracking, pesos
 
-NÃO inclua na resposta: texto literal dos prints (“SUMMARY”, “GUIDELINES”, títulos de guia); descrição de smartphone, laptop ou moldura de dispositivo; “é uma página de design system” como tema.
+ZONAS_DE_LAYOUT:
+- Onde ficam marca/contador (se houver), hero/imagem, bloco de título, corpo, rodapé/seta
+- Proporções aproximadas (ex.: imagem ocupa terço inferior; texto no terço médio)
 
-Formato: bullets curtos em português, até ~180 palavras. Última linha: “Consistência entre slides: …”.`,
-        },
-      ],
-    }],
+HIERARQUIA_VISUAL:
+- Ordem de leitura e contraste entre níveis
+
+PALETA:
+- Fundo, texto primário, secundário, acentos (hex se visíveis)
+
+TRATAMENTO_IMAGEM:
+- Estilo fotográfico ou ilustração de fundo (ex.: monocromático dramático, 3D abstrato, etc.)
+
+CONSISTENCIA_ENTRE_SLIDES:
+- Uma linha: o que deve repetir em todos os slides deste carrossel
+
+NÃO inclua: descrição de smartphone/mockup como objeto; frases literais dos prints que não sejam rótulos de estrutura; “é um PDF”.
+
+Máximo ~320 palavras.`
+
+  try {
+    return (await postGeminiParts([...validParts, { text: instruction }])).trim()
+  } catch {
+    return ''
   }
-
-  const response = await fetch(GEMINI_TEXT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-
-  if (!response.ok) return ''
-  const data = await response.json()
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
 }
 
 // Gera o slide COMPLETO como imagem — texto + design + visual integrados
@@ -780,7 +837,7 @@ export async function gerarSlideCompleto(params: {
     : ''
 
   const refNote = referenceDescription.trim()
-    ? `\nALINHAMENTO AO LOOK DE REFERÊNCIA (família visual dos slides; sem copiar logos nem fotos literais):\n${referenceDescription}\n`
+    ? `\nALINHAMENTO AO LOOK DE REFERÊNCIA (replicar estrutura e tipografia do design system — sem copiar logos nem fotos literais):\n${referenceDescription}\n`
     : ''
 
   const ctaColors = isCTA
@@ -791,10 +848,14 @@ export async function gerarSlideCompleto(params: {
     ? `\nDIREÇÃO EDITORIAL (composição e metáfora visual alinhadas ao tema — os textos obrigatórios são só os listados abaixo):\n${narrativaVisual.trim()}\n`
     : ''
 
+  const dsFidelity = referenceDescription.trim()
+    ? `\nFIDELIDADE_AO_DESIGN_SYSTEM: Siga as zonas de layout (ZONAS_DE_LAYOUT), pareamento tipográfico (TIPOGRAFIA) e hierarquia descritos na referência acima. O resultado deve parecer o mesmo “template” das imagens de referência da marca, apenas com o conteúdo textual deste slide.\n`
+    : ''
+
   const prompt = `Post estático para Instagram carrossel. UM ÚNICO quadro vertical ~4:5 (~1080x1350). Slide ${slide.slide_number}, tipo "${typeLabel}".
 
 CONTEÚDO VISUAL: ilustre o TEMA pelos TEXTOS abaixo — não mostre documentação, guias internos nem interfaces de ferramenta.
-${narrativaNote}
+${narrativaNote}${dsFidelity}
 CORES E TOKENS (obrigatório):
 - Cor primária/destaque: ${s.primaryColor}
 ${ctaColors}
