@@ -424,6 +424,92 @@ export function carouselSlideToNodeSlide(s: CarouselSlide): NodeSlide {
   }
 }
 
+/** Contexto editorial do carrossel para montar prompts de imagem por slide */
+export interface CarouselImagePromptContext {
+  titulo: string
+  descricao: string
+  referencesUrls: string[]
+  referencesText: string
+  tomNome: string
+  tomDescricao: string
+}
+
+function textoSlideParaResumo(s: NodeSlide): string {
+  const parts: string[] = []
+  if (s.tag_text) parts.push(`tag: ${s.tag_text}`)
+  if (s.headline) parts.push(`headline: ${s.headline}`)
+  if (s.subheadline) parts.push(`sub: ${s.subheadline}`)
+  if (s.body_paragraph) parts.push(`corpo: ${s.body_paragraph}`)
+  if (s.cta_message) parts.push(`cta: ${s.cta_message}`)
+  return parts.join(' · ') || '(sem texto)'
+}
+
+/** Gera o trecho criativo (Gemini texto) que orienta o Imagen para UM slide, com arco narrativo. */
+export async function montarPromptImagemSlide(params: {
+  carousel: CarouselImagePromptContext
+  todosSlides: NodeSlide[]
+  slideAtual: NodeSlide
+  totalSlides: number
+  styles: SlideStyles
+  visualBrief?: string
+  referenceDescription: string
+}): Promise<string> {
+  const { carousel, todosSlides, slideAtual, totalSlides, styles: st, visualBrief = '', referenceDescription } = params
+
+  const refUrlsBlock =
+    carousel.referencesUrls.length > 0
+      ? `Links de referência (matéria/fonte):\n${carousel.referencesUrls.map((u) => `- ${u}`).join('\n')}`
+      : ''
+  const refTextBlock = carousel.referencesText.trim()
+    ? `Contexto/texto colado pelo usuário:\n${carousel.referencesText}`
+    : ''
+
+  const sequencia = [...todosSlides]
+    .sort((a, b) => a.slide_number - b.slide_number)
+    .map((s) => `Slide ${s.slide_number}/${totalSlides} (${s.slide_type}): ${textoSlideParaResumo(s)}`)
+    .join('\n')
+
+  const papel =
+    slideAtual.slide_type === 'cover'
+      ? 'Capa: gancho visual forte; introduzir o tema do carrossel com impacto editorial.'
+      : slideAtual.slide_type === 'cta'
+      ? 'Fechamento (CTA): reforço visual para conversão (salvar/compartilhar/seguir); coerente com o tema.'
+      : 'Meio: desenvolver um argumento da sequência; não repetir a capa; avançar a narrativa.'
+
+  const vizBrief = visualBrief.trim()
+    ? `\nResumo visual da marca (tokens abstratos):\n${visualBrief}\n`
+    : ''
+  const refViz = referenceDescription.trim()
+    ? `\nExtração de ESTILO das imagens de referência (use só paleta, ritmo, grid, hierarquia — não copie assunto “documentação” nem texto de guias):\n${referenceDescription}\n`
+    : ''
+
+  const prompt = `Você escreve UM único parágrafo em português (máx. 850 caracteres): direção criativa para gerar uma imagem ESTÁTICA de slide de carrossel Instagram (~4:5), já incluindo como organizar o espaço para os textos indicados.
+
+TEMA DO CARROSSEL: "${carousel.titulo}"
+Descrição: ${carousel.descricao || 'não informada'}.
+Tom de voz: ${carousel.tomNome}${carousel.tomDescricao ? ` — ${carousel.tomDescricao}` : ''}.
+${refUrlsBlock ? `${refUrlsBlock}\n` : ''}${refTextBlock ? `${refTextBlock}\n` : ''}
+
+SEQUÊNCIA COMPLETA DO CARROSSEL (respeite início/meio/fim):
+${sequencia}
+
+SLIDE A ILUSTRAR AGORA: número ${slideAtual.slide_number} de ${totalSlides}, tipo "${slideAtual.slide_type}".
+Textos deste slide (devem aparecer na arte): ${textoSlideParaResumo(slideAtual)}
+
+PAPEL NA HISTÓRIA: ${papel}
+
+RESTRIÇÕES DE MARCA (cores/tokens — não transforme em “prints” nem UI):
+- primária ${st.primaryColor}; fundo slide ${slideAtual.slide_type === 'cta' ? st.ctaBackgroundColor : st.backgroundColor}; texto principal ${slideAtual.slide_type === 'cta' ? st.ctaTextColor : st.textColor}; padding ~${st.padding}px.
+${vizBrief}${refViz}
+
+PROIBIDO na sua descrição e na imagem desejada: smartphone/laptop/mockup/moldura de tela; página ou poster que simule “guia de design system” ou documentação como tema principal; citar frases literais de moodboards (“SUMMARY”, “VISUAL GUIDELINES”, etc.).
+
+Responda só com o parágrafo criativo, sem título nem markdown.`
+
+  const text = (await callGemini(prompt, carousel.referencesUrls.length > 0)).trim()
+  return text.length > 900 ? text.slice(0, 897) + '…' : text
+}
+
 export async function gerarRoteirosNodes(params: {
   titulo: string
   descricao: string
@@ -626,12 +712,20 @@ export async function analisarReferenciasVisuais(imageUrls: string[]): Promise<s
       parts: [
         ...validParts,
         {
-          text: `Estas imagens são REFERÊNCIA VISUAL apenas para novos layouts de carrossel Instagram (proporção 4:5).
+          text: `Estas imagens são referência de ESTILO para posts estáticos de carrossel Instagram (quadro 4:5). O produto final NÃO deve reproduzir o assunto “documentação” dos prints.
 
-NÃO descreva: smartphones, laptops, molduras de dispositivo, telas de app, wireframes, páginas de documentação, screenshots de sites ou UI de “design system”.
-Descreva só estilo ABSTRATO reutilizável: paleta, contraste, hierarquia tipográfica (pesos/tamanhos relativos), margens, grid, densidade, geométricos decorativos genéricos, tratamento foto vs tipo vs ilustração genérica.
+PARTE 1 — Extraia só tokens reutilizáveis:
+- paleta (fundo, texto, acento), contraste
+- hierarquia tipográfica relativa (pesos, tamanhos relativos, entrelinha)
+- margens, grid, densidade, alinhamentos predominantes
+- ritmo editorial (foto grande vs bloco de texto vs detalhes gráficos genéricos)
+- tratamento de imagem (ex.: retrato em estúdio, textura, geometria decorativa abstrata)
 
-Responda em português, até ~160 palavras em bullets. Última linha: “Consistência entre slides: …”.`,
+PARTE 2 — Uma linha: “Tradução para cenário editorial” (ex.: retrato minimal alto contraste / lifestyle natural / tipografia dominante), sem nomear documentação.
+
+NÃO inclua na resposta: texto literal dos prints (“SUMMARY”, “GUIDELINES”, títulos de guia); descrição de smartphone, laptop ou moldura de dispositivo; “é uma página de design system” como tema.
+
+Formato: bullets curtos em português, até ~180 palavras. Última linha: “Consistência entre slides: …”.`,
         },
       ],
     }],
@@ -654,8 +748,10 @@ export async function gerarSlideCompleto(params: {
   styles: SlideStyles
   visualBrief?: string
   referenceDescription: string
+  /** Direção criativa por slide (Gemini); reforça matéria + arco narrativo */
+  narrativaVisual?: string
 }): Promise<string> {
-  const { slide, styles: s, visualBrief = '', referenceDescription } = params
+  const { slide, styles: s, visualBrief = '', referenceDescription, narrativaVisual = '' } = params
 
   const typeLabel = slide.slide_type === 'cover' ? 'Capa' : slide.slide_type === 'body' ? 'Conteúdo' : 'CTA'
   const isCTA = slide.slide_type === 'cta'
@@ -691,10 +787,14 @@ export async function gerarSlideCompleto(params: {
     ? `- Fundo do slide: ${s.ctaBackgroundColor}\n- Cor do texto: ${s.ctaTextColor}`
     : `- Fundo do slide: ${s.backgroundColor}\n- Cor do texto: ${s.textColor}`
 
+  const narrativaNote = narrativaVisual.trim()
+    ? `\nDIREÇÃO EDITORIAL (composição e metáfora visual alinhadas ao tema — os textos obrigatórios são só os listados abaixo):\n${narrativaVisual.trim()}\n`
+    : ''
+
   const prompt = `Post estático para Instagram carrossel. UM ÚNICO quadro vertical ~4:5 (~1080x1350). Slide ${slide.slide_number}, tipo "${typeLabel}".
 
 CONTEÚDO VISUAL: ilustre o TEMA pelos TEXTOS abaixo — não mostre documentação, guias internos nem interfaces de ferramenta.
-
+${narrativaNote}
 CORES E TOKENS (obrigatório):
 - Cor primária/destaque: ${s.primaryColor}
 ${ctaColors}

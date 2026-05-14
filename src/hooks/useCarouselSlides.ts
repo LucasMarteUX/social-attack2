@@ -162,9 +162,14 @@ export function useCarouselSlides(carouselId: string) {
       >
     >
   ): Promise<CarouselSlide | null> {
-    const slide = slides.find((s) => s.id === slideId)
-    if (!slide) return null
+    const { data: row, error: selErr } = await supabase
+      .from('carousel_slides')
+      .select('*')
+      .eq('id', slideId)
+      .single()
+    if (selErr || !row) throw new Error(selErr?.message ?? 'Slide não encontrado')
 
+    const slide = row as CarouselSlide
     const tag_text = patch.tag_text !== undefined ? patch.tag_text : slide.tag_text
     const headline = patch.headline !== undefined ? patch.headline : slide.headline
     const subheadline = patch.subheadline !== undefined ? patch.subheadline : slide.subheadline
@@ -191,6 +196,19 @@ export function useCarouselSlides(carouselId: string) {
       .single()
     if (error) throw new Error(error.message)
 
+    const updated = data as CarouselSlide
+    setSlides((prev) => prev.map((s) => (s.id === slideId ? updated : s)))
+    return updated
+  }
+
+  async function definirPromptGeracao(slideId: string, promptText: string): Promise<CarouselSlide | null> {
+    const { data, error } = await supabase
+      .from('carousel_slides')
+      .update({ image_generation_prompt: promptText })
+      .eq('id', slideId)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
     const updated = data as CarouselSlide
     setSlides((prev) => prev.map((s) => (s.id === slideId ? updated : s)))
     return updated
@@ -234,6 +252,7 @@ export function useCarouselSlides(carouselId: string) {
     atualizarImagem,
     atualizarTextoRegenerado,
     aplicarTextoGerado,
+    definirPromptGeracao,
     buscarHistorico,
     recarregar: carregar,
   }

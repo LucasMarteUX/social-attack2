@@ -23,7 +23,17 @@ import Badge from '../components/ui/Badge'
 import { useCarousels } from '../hooks/useCarousels'
 import { useCarouselSlides } from '../hooks/useCarouselSlides'
 import { useDesignSystems } from '../hooks/useDesignSystems'
-import { gerarConteudoSlides, extrairSlideStylesDoDesignSystem, compactarDesignSystemParaBriefVisual, gerarSlideCompleto, analisarReferenciasVisuais, carouselSlideToNodeSlide } from '../lib/gemini'
+import { useTomDeVoz } from '../hooks/useTomDeVoz'
+import {
+  gerarConteudoSlides,
+  extrairSlideStylesDoDesignSystem,
+  compactarDesignSystemParaBriefVisual,
+  gerarSlideCompleto,
+  montarPromptImagemSlide,
+  analisarReferenciasVisuais,
+  carouselSlideToNodeSlide,
+  type CarouselImagePromptContext,
+} from '../lib/gemini'
 import { supabase } from '../lib/supabase'
 import type { CarouselSlide, SlideStyles } from '../data/mock'
 import { DEFAULT_SLIDE_STYLES, PLACEHOLDER_TEXTO_SLIDE_GERANDO } from '../data/mock'
@@ -93,9 +103,10 @@ export default function WorkspacePage() {
 
   const { criar: criarCarousel, atualizarStatus, getById, carousels } = useCarousels()
   const { designSystems } = useDesignSystems()
+  const { tons } = useTomDeVoz()
 
   const [carouselId, setCarouselId] = useState<string | null>(isNew ? null : (id ?? null))
-  const { slides, loading: slidesLoading, inserirSlides, editarTexto, resetarTexto, atualizarImagem, atualizarTextoRegenerado, aplicarTextoGerado, buscarHistorico } = useCarouselSlides(carouselId ?? '')
+  const { slides, loading: slidesLoading, inserirSlides, editarTexto, resetarTexto, atualizarImagem, atualizarTextoRegenerado, aplicarTextoGerado, definirPromptGeracao, buscarHistorico } = useCarouselSlides(carouselId ?? '')
 
   const [, setSlideStyles] = useState<SlideStyles>(DEFAULT_SLIDE_STYLES)
   const slideStylesRef = useRef<SlideStyles>(DEFAULT_SLIDE_STYLES)
@@ -259,6 +270,21 @@ export default function WorkspacePage() {
     )
   }, [carouselId, isNew, carousels]) // eslint-disable-line
 
+  function montarContextoCarrosselParaImagem(): CarouselImagePromptContext | null {
+    if (!carouselId) return null
+    const car = getById(carouselId)
+    if (!car) return null
+    const tom = tons.find((t) => t.id === car.tone_of_voice_id)
+    return {
+      titulo: car.title,
+      descricao: car.description ?? '',
+      referencesUrls: [...(car.references_urls ?? [])],
+      referencesText: car.references_text ?? '',
+      tomNome: tom?.nome ?? '',
+      tomDescricao: tom?.descricao ?? '',
+    }
+  }
+
   async function handleGerar(params: {
     titulo: string
     descricao: string
@@ -353,10 +379,19 @@ export default function WorkspacePage() {
       await atualizarStatus(carousel.id, 'ready')
 
       if (params.autoGerarImagens) {
+        const carouselPromptCtx: CarouselImagePromptContext = {
+          titulo: params.titulo,
+          descricao: params.descricao,
+          referencesUrls: params.referencesUrls,
+          referencesText: params.referencesText,
+          tomNome: params.tomNome,
+          tomDescricao: params.tomDescricao,
+        }
         void gerarImagensEmBackground(slidesParaImagens, carousel.id, {
           styles: estilos,
           visualBrief,
           referenceDescription,
+          carousel: carouselPromptCtx,
         }).catch((e) => {
           console.error(e)
           setAvisoImagens(e instanceof Error ? e.message : 'Falha ao gerar imagens em segundo plano.')
@@ -378,8 +413,14 @@ export default function WorkspacePage() {
   async function gerarImagensEmBackground(
     slidesList: CarouselSlide[],
     cId: string,
-    ctx: { styles: SlideStyles; visualBrief: string; referenceDescription: string }
+    ctx: {
+      styles: SlideStyles
+      visualBrief: string
+      referenceDescription: string
+      carousel: CarouselImagePromptContext
+    }
   ) {
+    const todosNodes = slidesList.map(carouselSlideToNodeSlide)
     let falhas = 0
     for (const slide of slidesList) {
       let atualizado: CarouselSlide | null = null
@@ -389,11 +430,35 @@ export default function WorkspacePage() {
         )
       )
       try {
+        const node = carouselSlideToNodeSlide(slide)
+        let narrativa = ''
+        try {
+          narrativa = await montarPromptImagemSlide({
+            carousel: ctx.carousel,
+            todosSlides: todosNodes,
+            slideAtual: node,
+            totalSlides: slidesList.length,
+            styles: ctx.styles,
+            visualBrief: ctx.visualBrief.trim() || undefined,
+            referenceDescription: ctx.referenceDescription,
+          })
+        } catch (err) {
+          console.error('montarPromptImagemSlide', slide.slide_number, err)
+        }
+        const narrativaTrim = narrativa.trim()
+        if (narrativaTrim) {
+          try {
+            await definirPromptGeracao(slide.id, narrativaTrim)
+          } catch (err) {
+            console.error('definirPromptGeracao', slide.slide_number, err)
+          }
+        }
         const dataUrl = await gerarSlideCompleto({
-          slide: carouselSlideToNodeSlide(slide),
+          slide: node,
           styles: ctx.styles,
           visualBrief: ctx.visualBrief.trim() || undefined,
           referenceDescription: ctx.referenceDescription,
+          narrativaVisual: narrativaTrim || undefined,
         })
         const path = `${cId}/${slide.id}/full-${slide.slide_number}.png`
         const blob = dataURLtoBlob(dataUrl)
@@ -406,7 +471,7 @@ export default function WorkspacePage() {
             slide.id,
             urlData.publicUrl,
             'generated',
-            'Post completo (texto + layout via IA)',
+            narrativaTrim || 'Post completo (texto + layout via IA)',
             true
           )
         } else {
@@ -566,6 +631,7 @@ export default function WorkspacePage() {
 
   const carouselInfo = !isNew && carouselId ? getById(carouselId) : null
   const modalSlide = imageModal ? slides.find((s) => s.id === imageModal.slideId) : undefined
+  const carouselCtxModal = montarContextoCarrosselParaImagem()
 
   return (
     <div className="w-full h-[calc(100vh-64px)] relative">
@@ -647,7 +713,7 @@ export default function WorkspacePage() {
         />
       )}
 
-      {imageModal && modalSlide && (
+      {imageModal && modalSlide && carouselCtxModal && (
         <GenerateImageModal
           open
           onClose={() => setImageModal(null)}
@@ -655,6 +721,8 @@ export default function WorkspacePage() {
           fullSlide={{
             slide: modalSlide,
             styles: slideStylesRef.current,
+            carousel: carouselCtxModal,
+            allSlides: slides.map(carouselSlideToNodeSlide),
             visualBrief: visualBriefRef.current || undefined,
             referenceDescription: visualRefDescRef.current,
           }}
