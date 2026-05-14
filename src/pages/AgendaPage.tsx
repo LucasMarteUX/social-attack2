@@ -203,8 +203,8 @@ export default function AgendaPage() {
                       </div>
                       <div className="flex flex-col gap-1">
                         {d.eventos.slice(0, 2).map((e) => {
-                          const cat = getCategoriaByCriativo(e.criativo_id)
-                          const cri = getCriativo(e.criativo_id)
+                          const cat = e.criativo_id ? getCategoriaByCriativo(e.criativo_id) : null
+                          const cri = e.criativo_id ? getCriativo(e.criativo_id) : null
                           return (
                             <button
                               key={e.id}
