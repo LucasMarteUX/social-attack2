@@ -5,7 +5,6 @@ import Button from '../ui/Button'
 import Spinner from '../ui/Spinner'
 import {
   generateSlideImage,
-  gerarSlideCompleto,
   montarPromptImagemSlide,
   carouselSlideToNodeSlide,
   type CarouselImagePromptContext,
@@ -15,6 +14,9 @@ import {
 import type { CarouselSlide, SlideStyles } from '../../data/mock'
 
 const MAX_PILOTO_FILES = 4
+
+const REFORCO_VARIACAO_FUNDO =
+  '\n\n(Reforço: aplicar só como mudança de fundo/camada atrás do texto — preservar a mesma diagramação, tipografia aparente e cores de texto do slide atual.)'
 
 interface FullSlideBundle {
   slide: CarouselSlide
@@ -26,13 +28,22 @@ interface FullSlideBundle {
   referenceImageUrls?: string[]
 }
 
+export interface IniciarVariacaoFundoPayload {
+  slideId: string
+  narrativaVisual: string
+  referenceInlineParts?: GeminiImageInlinePart[]
+}
+
 interface Props {
   open: boolean
   onClose: () => void
   variant: 'free_prompt' | 'full_slide'
   promptInicial?: string
   fullSlide?: FullSlideBundle
-  onConfirmar: (imageDataUrl: string, prompt: string, opts?: { imageIsFullComposition?: boolean }) => Promise<void>
+  /** Modo livre: após gerar, preview e confirmar */
+  onConfirmar?: (imageDataUrl: string, prompt: string, opts?: { imageIsFullComposition?: boolean }) => Promise<void>
+  /** Slide completo: só instruções — fecha o modal e gera variação de fundo ao lado */
+  onIniciarVariacaoFundo?: (payload: IniciarVariacaoFundoPayload) => void
 }
 
 function readFileAsGeminiPart(file: File): Promise<GeminiImageInlinePart> {
@@ -79,15 +90,17 @@ export default function GenerateImageModal({
   promptInicial = '',
   fullSlide,
   onConfirmar,
+  onIniciarVariacaoFundo,
 }: Props) {
   const [prompt, setPrompt] = useState(promptInicial)
   const [promptCriativo, setPromptCriativo] = useState('')
   const [promptLoading, setPromptLoading] = useState(false)
   const [promptErro, setPromptErro] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loadingFree, setLoadingFree] = useState(false)
   const [preview, setPreview] = useState<string | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [pilotoFiles, setPilotoFiles] = useState<File[]>([])
+  const [enviandoVariacao, setEnviandoVariacao] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const fullSlideRef = useRef(fullSlide)
   fullSlideRef.current = fullSlide
@@ -102,6 +115,7 @@ export default function GenerateImageModal({
     setPreview(null)
     setErro(null)
     setPilotoFiles([])
+    setEnviandoVariacao(false)
   }, [open, promptInicial, fullSlide?.slide.id])
 
   async function gerarPromptAutomatico() {
@@ -122,7 +136,7 @@ export default function GenerateImageModal({
         referenceDescription: fs.referenceDescription,
         referenceImageUrls: fs.referenceImageUrls,
       })
-      if (!utilizadorEditouPromptRef.current) setPromptCriativo(texto)
+      if (!utilizadorEditouPromptRef.current) setPromptCriativo(`${texto}${REFORCO_VARIACAO_FUNDO}`)
     } catch (e) {
       setPromptErro(e instanceof Error ? e.message : 'Falha ao montar prompt')
     } finally {
@@ -154,91 +168,96 @@ export default function GenerateImageModal({
     return Promise.all(slice.map(readFileAsGeminiPart))
   }
 
-  async function handleGerar() {
-    if (variant === 'full_slide' && !fullSlide) {
-      setErro('Dados do slide indisponíveis.')
-      return
-    }
-    if (variant === 'free_prompt' && !prompt.trim() && pilotoFiles.length === 0) {
+  async function handleGerarFree() {
+    if (!prompt.trim() && pilotoFiles.length === 0) {
       setErro('Escreva um prompt ou adicione imagens de referência.')
       return
     }
-    if (variant === 'full_slide') {
-      if (!promptCriativo.trim() && pilotoFiles.length === 0) {
-        setErro('Escreva instruções para o fundo/arte ou adicione imagens de referência.')
-        return
-      }
-    }
-
-    setLoading(true)
+    if (!onConfirmar) return
+    setLoadingFree(true)
     setErro(null)
     try {
       let referenceInlineParts: GeminiImageInlinePart[] | undefined
       if (pilotoFiles.length > 0) {
         referenceInlineParts = await pilotoToParts()
       }
-
-      if (variant === 'full_slide' && fullSlide) {
-        const narrativa = promptCriativo.trim() || undefined
-        const dataUrl = await gerarSlideCompleto({
-          slide: carouselSlideToNodeSlide(fullSlide.slide),
-          styles: fullSlide.styles,
-          visualBrief: fullSlide.visualBrief,
-          referenceDescription: fullSlide.referenceDescription,
-          narrativaVisual: narrativa,
-          referenceInlineParts,
-        })
-        setPreview(dataUrl)
-      } else {
-        const dataUrl = await generateSlideImage(prompt.trim(), {
-          referenceInlineParts,
-        })
-        setPreview(dataUrl)
-      }
+      const dataUrl = await generateSlideImage(prompt.trim(), {
+        referenceInlineParts,
+      })
+      setPreview(dataUrl)
     } catch (e) {
       setErro(e instanceof Error ? e.message : 'Erro ao gerar imagem')
     } finally {
-      setLoading(false)
+      setLoadingFree(false)
     }
   }
 
-  async function handleConfirmar() {
-    if (!preview) return
-    const baseHist =
-      variant === 'full_slide'
-        ? promptCriativo.trim() || 'Post completo gerado (texto integrado à arte)'
-        : prompt.trim()
+  async function handleConfirmarFree() {
+    if (!preview || !onConfirmar) return
     const refsSuffix =
       pilotoFiles.length > 0 ? ` · ${pilotoFiles.length} imagem(ns) piloto` : ''
-    await onConfirmar(preview, `${baseHist}${refsSuffix}`, {
-      imageIsFullComposition: variant === 'full_slide',
+    await onConfirmar(preview, `${prompt.trim()}${refsSuffix}`, {
+      imageIsFullComposition: false,
     })
     onClose()
   }
 
-  const titulo =
-    variant === 'full_slide' ? 'Gerar arte do post (IA)' : 'Gerar imagem com IA'
+  async function handleIniciarVariacao() {
+    if (variant !== 'full_slide' || !fullSlide || !onIniciarVariacaoFundo) return
+    if (!promptCriativo.trim() && pilotoFiles.length === 0) {
+      setErro('Escreva instruções para o novo fundo ou adicione imagens de referência.')
+      return
+    }
+    setEnviandoVariacao(true)
+    setErro(null)
+    try {
+      const referenceInlineParts =
+        pilotoFiles.length > 0 ? await pilotoToParts() : undefined
+      onIniciarVariacaoFundo({
+        slideId: fullSlide.slide.id,
+        narrativaVisual: promptCriativo.trim(),
+        referenceInlineParts,
+      })
+      onClose()
+    } catch (e) {
+      setErro(e instanceof Error ? e.message : 'Erro ao preparar envio')
+    } finally {
+      setEnviandoVariacao(false)
+    }
+  }
 
-  const gerarDisabled =
-    loading ||
-    (variant === 'free_prompt'
-      ? !prompt.trim() && pilotoFiles.length === 0
-      : !promptCriativo.trim() && pilotoFiles.length === 0)
+  const titulo =
+    variant === 'full_slide'
+      ? 'Variação de fundo (mesmo layout)'
+      : 'Gerar imagem com IA'
+
+  const gerarDisabledFree =
+    loadingFree || (!prompt.trim() && pilotoFiles.length === 0)
+
+  const gerarDisabledFullSlide =
+    enviandoVariacao || (!promptCriativo.trim() && pilotoFiles.length === 0)
 
   return (
     <Modal open={open} onClose={onClose} title={titulo}>
       <div className="flex flex-col gap-4">
         {variant === 'full_slide' ? (
           <>
-            <p className="text-body-sm text-neutral-600">
-              Edite o prompt para orientar <strong>fundo e arte</strong> (não altera os textos do slide no editor).
-              Opcionalmente envie logo ou imagem piloto — o modelo usa como referência visual na geração nativa;
-              no fallback só texto (Imagen), as instruções no campo abaixo são essenciais.
-            </p>
+            <div className="rounded-lg border border-purple-100 bg-purple-50/90 px-3 py-2.5 space-y-1.5">
+              <p className="text-body-sm font-semibold text-purple-950">
+                O que vai acontecer
+              </p>
+              <p className="text-[12px] leading-snug text-purple-900">
+                Ao clicar em <strong>Gerar variação de fundo</strong>, este modal fecha e o fluxo gera uma{' '}
+                <strong>nova opção de imagem</strong> para <strong>este mesmo slide</strong> — mesma tipografia,
+                cores de texto e diagramação; muda só a <strong>fotografia / ilustração / textura por detrás</strong>.
+                A imagem atual <strong>não é apagada</strong>; a nova aparece em miniaturas em baixo na arte do slide
+                para você escolher <strong>Usar</strong> ou descartar.
+              </p>
+            </div>
             <div>
               <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
                 <label className="text-label font-medium text-neutral-700">
-                  Instruções para fundo e arte (prompt criativo)
+                  Instruções só para o novo fundo
                 </label>
                 <div className="flex items-center gap-2">
                   {promptLoading && (
@@ -252,14 +271,14 @@ export default function GenerateImageModal({
                     disabled={promptLoading || !fullSlideRef.current}
                     className="text-[11px] font-semibold text-purple-600 hover:text-purple-800 flex items-center gap-1 disabled:opacity-40"
                   >
-                    <RefreshCw size={12} /> Regenerar prompt
+                    <RefreshCw size={12} /> Regenerar sugestão
                   </button>
                 </div>
               </div>
               <textarea
                 className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-body-sm text-neutral-900 outline-none focus:border-purple-500 transition-colors resize-y min-h-[120px]"
                 rows={5}
-                placeholder="Descreva fundo, texturas, mood, composição… Pode escrever já ou esperar pela sugestão automática."
+                placeholder="Ex.: fundo mais escuro com textura subtly tech; manter headline onde está…"
                 value={promptCriativo}
                 onChange={(e) => {
                   utilizadorEditouPromptRef.current = true
@@ -294,8 +313,8 @@ export default function GenerateImageModal({
             <div>
               <p className="text-label font-medium text-neutral-800">Referências visuais (opcional)</p>
               <p className="text-[11px] text-neutral-500 mt-0.5">
-                Logo, piloto de marca ou mood — até {MAX_PILOTO_FILES} imagens. Ajuste o texto acima para dizer
-                como usar cada uma (ex.: “logótipo no canto inferior”, “textura de fundo”).
+                Logo ou mood para o fundo — até {MAX_PILOTO_FILES} imagens. Descreva no texto como aplicar (ex. textura,
+                paleta).
               </p>
             </div>
             <Button
@@ -334,14 +353,14 @@ export default function GenerateImageModal({
           )}
         </div>
 
-        {loading && (
+        {variant === 'free_prompt' && loadingFree && (
           <div className="flex items-center justify-center gap-3 py-8 bg-purple-50 rounded-xl border border-purple-100">
             <Spinner size="md" />
             <p className="text-body-md text-purple-700 font-medium">Gerando imagem…</p>
           </div>
         )}
 
-        {preview && !loading && (
+        {variant === 'free_prompt' && preview && !loadingFree && (
           <div className="flex flex-col gap-2">
             <p className="text-label font-semibold text-neutral-500">Preview</p>
             <div className="w-full max-w-[280px] mx-auto aspect-[4/5] rounded-xl border border-neutral-100 overflow-hidden bg-neutral-100">
@@ -357,18 +376,35 @@ export default function GenerateImageModal({
         {erro && <p className="text-body-sm text-red-600 bg-red-50 p-3 rounded-lg">{erro}</p>}
 
         <div className="flex gap-3 justify-end pt-2 flex-wrap">
-          <Button
-            variant="secondary"
-            onClick={() => void handleGerar()}
-            loading={loading}
-            disabled={gerarDisabled}
-          >
-            <Wand2 size={14} />
-            {preview ? 'Gerar novamente' : 'Gerar imagem'}
-          </Button>
-          <Button onClick={() => void handleConfirmar()} disabled={!preview || loading}>
-            Usar esta imagem
-          </Button>
+          {variant === 'full_slide' ? (
+            <Button
+              variant="secondary"
+              onClick={() => void handleIniciarVariacao()}
+              loading={enviandoVariacao}
+              disabled={gerarDisabledFullSlide}
+            >
+              <Wand2 size={14} />
+              Gerar variação de fundo
+            </Button>
+          ) : (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => void handleGerarFree()}
+                loading={loadingFree}
+                disabled={gerarDisabledFree}
+              >
+                <Wand2 size={14} />
+                {preview ? 'Gerar novamente' : 'Gerar imagem'}
+              </Button>
+              <Button
+                onClick={() => void handleConfirmarFree()}
+                disabled={!preview || loadingFree || !onConfirmar}
+              >
+                Usar esta imagem
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </Modal>

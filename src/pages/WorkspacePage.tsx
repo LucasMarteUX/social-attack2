@@ -29,10 +29,12 @@ import {
   extrairSlideStylesDoDesignSystem,
   compactarDesignSystemParaBriefVisual,
   gerarSlideCompleto,
+  gerarVariacaoFundoSlide,
   montarPromptImagemSlide,
   analisarReferenciasVisuais,
   carouselSlideToNodeSlide,
   type CarouselImagePromptContext,
+  type GeminiImageInlinePart,
 } from '../lib/gemini'
 import { supabase } from '../lib/supabase'
 import type { CarouselSlide, SlideStyles } from '../data/mock'
@@ -118,6 +120,11 @@ export default function WorkspacePage() {
   const [regenModal, setRegenModal] = useState<{ slideId: string; campo: string; textoAtual: string; slideType: string; historico: ReturnType<typeof buscarHistorico> extends Promise<infer T> ? T : never } | null>(null)
   const [regenHistorico, setRegenHistorico] = useState<{ id: string; new_value: string | null; created_at: string }[]>([])
   const [imageModal, setImageModal] = useState<{ slideId: string } | null>(null)
+  const [slidePendingVariants, setSlidePendingVariants] = useState<
+    Record<string, { id: string; url: string; prompt: string }[]>
+  >({})
+  const slidePendingVariantsRef = useRef(slidePendingVariants)
+  slidePendingVariantsRef.current = slidePendingVariants
   const handleGerarRef = useRef<(p: GerarParams) => Promise<void>>(async () => {
     throw new Error('Workspace ainda não está pronto.')
   })
@@ -549,10 +556,12 @@ export default function WorkspacePage() {
   }
 
   function buildSlideData(slide: CarouselSlide, estilos: SlideStyles, total: number) {
+    const pending = slidePendingVariantsRef.current[slide.id] ?? []
     return {
       slide,
       styles: estilos,
       totalSlides: total,
+      pendingImageVariants: pending,
       onEditarTexto: async (slideId: string, campo: string, valor: string) => {
         await editarTexto(slideId, campo as keyof Pick<CarouselSlide, 'tag_text' | 'headline' | 'subheadline' | 'body_paragraph' | 'cta_message'>, valor)
         refreshSlideNode(slideId)
@@ -568,6 +577,29 @@ export default function WorkspacePage() {
       },
       onAbrirGerarImagem: (slideId: string) => {
         setImageModal({ slideId })
+      },
+      onUsarVarianteImagem: async (slideId: string, variant: { id: string; url: string; prompt: string }) => {
+        await atualizarImagem(slideId, variant.url, 'generated', variant.prompt, true)
+        setSlidePendingVariants((prev) => {
+          const next = {
+            ...prev,
+            [slideId]: (prev[slideId] ?? []).filter((v) => v.id !== variant.id),
+          }
+          slidePendingVariantsRef.current = next
+          return next
+        })
+        refreshSlideNode(slideId)
+      },
+      onDescartarVarianteImagem: (slideId: string, variantId: string) => {
+        setSlidePendingVariants((prev) => {
+          const next = {
+            ...prev,
+            [slideId]: (prev[slideId] ?? []).filter((v) => v.id !== variantId),
+          }
+          slidePendingVariantsRef.current = next
+          return next
+        })
+        refreshSlideNode(slideId)
       },
       onUploadImagem: async (slideId: string, file: File) => {
         const path = `${carouselId}/${slideId}/${file.name}`
@@ -598,6 +630,72 @@ export default function WorkspacePage() {
     )
   }
 
+  async function handleIniciarVariacaoFundo(payload: {
+    slideId: string
+    narrativaVisual: string
+    referenceInlineParts?: GeminiImageInlinePart[]
+  }) {
+    const { slideId, narrativaVisual, referenceInlineParts } = payload
+    if (!carouselId) return
+
+    const slide = slides.find((s) => s.id === slideId)
+    if (!slide) return
+
+    setNodes((nds) =>
+      nds.map((n) => {
+        if (n.id !== `slide-${slideId}`) return n
+        const d = n.data as unknown as SlideNodeData
+        return { ...n, data: { ...d, imageGenerating: true } }
+      })
+    )
+
+    try {
+      const node = carouselSlideToNodeSlide(slide)
+      const dataUrl = await gerarVariacaoFundoSlide({
+        slide: node,
+        styles: slideStylesRef.current,
+        visualBrief: visualBriefRef.current.trim() || undefined,
+        referenceDescription: visualRefDescRef.current,
+        narrativaVisual: narrativaVisual.trim() || undefined,
+        referenceInlineParts,
+        baseSlideImageUrl: slide.image_url,
+      })
+      const histPrompt = [
+        'Variação de fundo',
+        referenceInlineParts?.length ? `${referenceInlineParts.length} ref(s)` : null,
+        narrativaVisual.trim().slice(0, 400),
+      ]
+        .filter(Boolean)
+        .join(' · ')
+      const path = `${carouselId}/${slideId}/var-${Date.now()}.png`
+      const blob = dataURLtoBlob(dataUrl)
+      const { data: storageData, error } = await supabase.storage
+        .from('carousel-images')
+        .upload(path, blob, { upsert: true, contentType: blob.type || 'image/png' })
+      if (error) throw new Error(error.message)
+      const { data: urlData } = supabase.storage.from('carousel-images').getPublicUrl(storageData.path)
+      const vid = crypto.randomUUID()
+      const newVar = { id: vid, url: urlData.publicUrl, prompt: histPrompt }
+      setSlidePendingVariants((prev) => {
+        const next = { ...prev, [slideId]: [...(prev[slideId] ?? []), newVar] }
+        slidePendingVariantsRef.current = next
+        return next
+      })
+      refreshSlideNode(slideId)
+    } catch (e) {
+      console.error(e)
+      setAvisoImagens(e instanceof Error ? e.message : 'Falha ao gerar variação de fundo.')
+    } finally {
+      setNodes((nds) =>
+        nds.map((n) => {
+          if (n.id !== `slide-${slideId}`) return n
+          const d = n.data as unknown as SlideNodeData
+          return { ...n, data: { ...d, imageGenerating: false } }
+        })
+      )
+    }
+  }
+
   async function handleConfirmarRegenerar(novoTexto: string, promptUsado?: string) {
     if (!regenModal) return
     await atualizarTextoRegenerado(
@@ -607,29 +705,6 @@ export default function WorkspacePage() {
       promptUsado
     )
     refreshSlideNode(regenModal.slideId)
-  }
-
-  async function handleConfirmarImagem(
-    imageDataUrl: string,
-    prompt: string,
-    opts?: { imageIsFullComposition?: boolean }
-  ) {
-    if (!imageModal || !carouselId) return
-    const path = `${carouselId}/${imageModal.slideId}/modal-${Date.now()}.png`
-    const blob = dataURLtoBlob(imageDataUrl)
-    const { data: storageData, error } = await supabase.storage
-      .from('carousel-images')
-      .upload(path, blob, { upsert: true, contentType: blob.type || 'image/png' })
-    if (error) throw new Error(error.message)
-    const { data: urlData } = supabase.storage.from('carousel-images').getPublicUrl(storageData.path)
-    await atualizarImagem(
-      imageModal.slideId,
-      urlData.publicUrl,
-      'generated',
-      prompt,
-      opts?.imageIsFullComposition ?? false
-    )
-    refreshSlideNode(imageModal.slideId)
   }
 
   const carouselInfo = !isNew && carouselId ? getById(carouselId) : null
@@ -739,7 +814,7 @@ export default function WorkspacePage() {
             referenceDescription: visualRefDescRef.current,
             referenceImageUrls: designSystemRefImageUrls,
           }}
-          onConfirmar={handleConfirmarImagem}
+          onIniciarVariacaoFundo={handleIniciarVariacaoFundo}
         />
       )}
     </div>

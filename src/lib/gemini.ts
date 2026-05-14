@@ -250,6 +250,30 @@ async function fetchImageUrlsAsInlineParts(
     .map((r) => r.value)
 }
 
+async function fetchUrlAsGeminiInlinePart(
+  url: string,
+): Promise<{ inlineData: { mimeType: string; data: string } } | null> {
+  const trimmed = url.trim()
+  if (!trimmed) return null
+  try {
+    const res = await fetch(trimmed)
+    if (!res.ok) return null
+    const blob = await res.blob()
+    const base64 = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        const result = reader.result as string
+        resolve(result.split(',')[1])
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+    return { inlineData: { mimeType: blob.type || 'image/jpeg', data: base64 } }
+  } catch {
+    return null
+  }
+}
+
 function extrairObjetoBalanceado(s: string, abre: '{' | '['): string | null {
   const start = s.indexOf(abre)
   if (start === -1) return null
@@ -1200,5 +1224,112 @@ REQUISITOS:
 
   return generateSlideImage(prompt, {
     referenceInlineParts: referenceInlineParts.length ? referenceInlineParts : undefined,
+  })
+}
+
+/** Nova arte do mesmo slide: só muda fundo/camada visual; tipografia, cores de texto e diagramação idênticas à referência. */
+export async function gerarVariacaoFundoSlide(params: {
+  slide: NodeSlide
+  styles: SlideStyles
+  visualBrief?: string
+  referenceDescription: string
+  narrativaVisual?: string
+  referenceInlineParts?: GeminiImageInlinePart[]
+  /** Arte atual do slide (URL pública) — anexada como referência de composição a preservar */
+  baseSlideImageUrl?: string | null
+}): Promise<string> {
+  const {
+    slide,
+    styles: s,
+    visualBrief = '',
+    referenceDescription,
+    narrativaVisual = '',
+    referenceInlineParts = [],
+    baseSlideImageUrl = null,
+  } = params
+
+  const MAX_INLINE = 4
+  const mergedParts: GeminiImageInlinePart[] = []
+  const basePart = baseSlideImageUrl ? await fetchUrlAsGeminiInlinePart(baseSlideImageUrl) : null
+  if (basePart) mergedParts.push(basePart)
+  for (const p of referenceInlineParts) {
+    if (mergedParts.length >= MAX_INLINE) break
+    mergedParts.push(p)
+  }
+
+  const imgRoles =
+    basePart && mergedParts.length > 1
+      ? `ORDEM DAS IMAGENS ANEXADAS ANTES DESTE TEXTO:
+1) COMPOSIÇÃO ATUAL DO SLIDE — copie a mesma diagramação de texto (fontes aparentes, pesos, cores dos caracteres, alinhamentos, tamanhos relativos, margens e posições dos blocos). Não redesenhe tipografia.
+2) Em diante — referências do utilizador para o NOVO fundo (logo, mood, textura, paleta). Incorporar só na camada atrás do texto.\n\n`
+      : basePart
+        ? `HÁ UMA IMAGEM ANEXADA: é o slide atual. Preserve o texto e o layout tipográfico ao pixel; altere APENAS fotografia/ilustração/gradiente/textura por detrás.\n\n`
+        : mergedParts.length > 0
+          ? `Imagens anexadas: referências para o novo fundo e mood. Mantenha rigorosamente os tokens de tipografia e posições descritos abaixo (sem inventar novo grid).\n\n`
+          : ''
+
+  const typeLabel = slide.slide_type === 'cover' ? 'Capa' : slide.slide_type === 'body' ? 'Conteúdo' : 'CTA'
+  const isCTA = slide.slide_type === 'cta'
+  const alignLabel = slide.slide_type === 'body' ? s.bodyTextAlign : s.coverTextAlign
+
+  const contentLines: string[] = []
+  if (slide.slide_type === 'cover') {
+    if (slide.tag_text) contentLines.push(`Tag (pequeno, uppercase, cor ${s.tagColor}): "${slide.tag_text}"`)
+    if (slide.headline) contentLines.push(`Headline principal (grande, bold, cor ${s.textColor}): "${slide.headline}"`)
+    if (slide.subheadline) contentLines.push(`Subheadline (menor, cor ${s.textColor} com 70% opacidade): "${slide.subheadline}"`)
+  } else if (slide.slide_type === 'body') {
+    if (slide.headline) contentLines.push(`Título (bold, cor ${s.textColor}): "${slide.headline}"`)
+    if (slide.body_paragraph) contentLines.push(`Parágrafo (regular, cor ${s.textColor}): "${slide.body_paragraph}"`)
+  } else if (slide.slide_type === 'cta') {
+    if (slide.cta_message) contentLines.push(`Mensagem CTA (grande, centralizada, cor ${s.ctaTextColor}): "${slide.cta_message}"`)
+  }
+
+  const layoutDesc = slide.slide_type === 'cover'
+    ? 'Capa: mesmo template — só nova fotografia/arte de fundo'
+    : slide.slide_type === 'body'
+    ? 'Corpo: mesmas zonas de texto — só nova imagem de apoio atrás'
+    : `CTA: mesmo grid e tipografia — pode mudar só wash/fundo decorativo atrás de ${s.ctaBackgroundColor}`
+
+  const briefNote = visualBrief.trim()
+    ? `\nDIRETRIZES VISUAIS (herdadas — não mudar hierarquia tipográfica):\n${visualBrief}\n`
+    : ''
+
+  const refNote = referenceDescription.trim()
+    ? `\nDESIGN SYSTEM (estrutura — não reinterpretar como slide diferente):\n${referenceDescription}\n`
+    : ''
+
+  const ctaColors = isCTA
+    ? `- Fundo do slide: ${s.ctaBackgroundColor}\n- Cor do texto: ${s.ctaTextColor}`
+    : `- Fundo do slide: ${s.backgroundColor}\n- Cor do texto: ${s.textColor}`
+
+  const narrativaNote = narrativaVisual.trim()
+    ? `\nNOVO FUNDO / DIREÇÃO (aplicar só na camada visual atrás do texto):\n${narrativaVisual.trim()}\n`
+    : ''
+
+  const prompt = `VARIAÇÃO DE FUNDO DO MESMO SLIDE (Instagram carrossel ~4:5). Slide ${slide.slide_number}, tipo "${typeLabel}".
+
+${imgRoles}REGRAS ABSOLUTAS:
+- Saída = nova VARIAÇÃO do MESMO post: os TEXTOS abaixo devem aparecer iguais em posição, hierarquia, cor de texto e peso — como na composição de referência.
+- Altere APENAS fundo: foto, ilustração de fundo, textura, gradiente ou elementos decorativos POR TRÁS do texto.
+- PROIBIDO: mudar fonte, tamanho de headline, cor do texto (exceto se já definida nos tokens), alinhamento, margens do bloco de texto, ou inventar novo layout de slide.
+- PROIBIDO: smartphone mockup, UI, documentação como tema.
+
+${narrativaNote}
+CORES E TOKENS (texto — obrigatório respeitar):
+- Cor primária/destaque: ${s.primaryColor}
+${ctaColors}
+${briefNote}${refNote}
+
+TEXTOS QUE DEVEM APARECER NA IMAGEM (inalteráveis em estilo e posição relativa):
+${contentLines.join('\n') || 'Sem texto'}
+
+LAYOUT: ${layoutDesc}
+Alinhamento texto: ${alignLabel}
+Padding: ${s.padding}px
+
+Este slide deve parecer o mesmo ficheiro de design com outra fotografia de fundo — não um post novo.`
+
+  return generateSlideImage(prompt, {
+    referenceInlineParts: mergedParts.length ? mergedParts : undefined,
   })
 }
