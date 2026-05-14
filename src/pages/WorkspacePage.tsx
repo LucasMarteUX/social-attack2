@@ -919,8 +919,8 @@ export default function WorkspacePage() {
           id="workspace-grid"
           variant={BackgroundVariant.Dots}
           gap={20}
-          size={1.25}
-          color={isDarkFlow ? 'rgba(255,255,255,0.055)' : 'rgba(0,0,0,0.06)'}
+          size={1.35}
+          color={isDarkFlow ? 'rgba(255,255,255,0.11)' : 'rgba(0,0,0,0.12)'}
         />
         <Controls />
         <MiniMap
