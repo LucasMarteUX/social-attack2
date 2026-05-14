@@ -133,7 +133,10 @@ export interface NodeSlide {
   cta_message?: string
 }
 
+import type { SlideStyles } from '../data/mock'
+
 export interface NodeCarouselScript {
+  styles: SlideStyles
   slides: NodeSlide[]
 }
 
@@ -155,27 +158,45 @@ export async function gerarRoteirosNodes(params: {
     hasUrls ? `Links de referência:\n${referencesUrls.map((u) => `- ${u}`).join('\n')}` : '',
   ].filter(Boolean).join('\n\n')
 
-  const dsBlock = designSystemMarkdown
-    ? `\nDesign System (consulte ao criar os textos):\n${designSystemMarkdown}\n`
+  const dsBlock = designSystemMarkdown.trim()
+    ? `\nDesign System:\n${designSystemMarkdown}\n`
     : ''
 
-  const prompt = `Você é um especialista em criação de conteúdo para Instagram.
-Crie um carrossel com exatamente ${totalSlides} slides sobre: "${titulo}".
-Descrição: ${descricao || 'não fornecida'}.
+  const prompt = `Você é um especialista em criação de conteúdo e design para Instagram.
+
+TAREFA: Gere um carrossel com ${totalSlides} slides sobre "${titulo}" E extraia os estilos visuais do design system.
+
 Tom de voz: ${tomNome}${tomDescricao ? ` — ${tomDescricao}` : ''}.
+Descrição: ${descricao || 'não fornecida'}.
 ${dsBlock}${refBlock ? `\n${refBlock}\n` : ''}
-ESTRUTURA OBRIGATÓRIA:
-- Slide 1: tipo "cover" — tag (categoria/tema em 2-3 palavras), headline (título impactante), subheadline (frase complementar curta)
-- Slides 2 até ${totalSlides - 1}: tipo "body" — headline (ponto principal) + body_paragraph (desenvolvimento, 2-3 linhas)
-- Slide ${totalSlides}: tipo "cta" — cta_message (chamada para seguir o perfil ou salvar o post)
+SLIDES:
+- Slide 1: tipo "cover" — tag (2-3 palavras), headline (título impactante), subheadline (frase curta)
+- Slides 2 a ${totalSlides - 1}: tipo "body" — headline + body_paragraph (2-3 linhas)
+- Slide ${totalSlides}: tipo "cta" — cta_message (chamada para salvar/seguir)
 
 Regras:
-- Textos diretos, sem prolixidade
+- Textos diretos e sem prolixidade
 - Se há URLs de referência, pesquise e use o conteúdo dessas fontes
 - Responda APENAS com JSON válido, sem texto extra
 
-Formato:
+Formato obrigatório (preencha "styles" com os valores reais do design system acima; use os defaults indicados se não houver design system):
 {
+  "styles": {
+    "primaryColor": "#6D28D9",
+    "backgroundColor": "#FFFFFF",
+    "textColor": "#1A1A1A",
+    "ctaBackgroundColor": "#6D28D9",
+    "ctaTextColor": "#FFFFFF",
+    "tagColor": "#6D28D9",
+    "coverHeadlineFontSize": 32,
+    "coverSubheadlineFontSize": 14,
+    "bodyHeadlineFontSize": 24,
+    "bodyParagraphFontSize": 16,
+    "ctaFontSize": 28,
+    "coverTextAlign": "left",
+    "bodyTextAlign": "left",
+    "padding": 24
+  },
   "slides": [
     { "slide_number": 1, "slide_type": "cover", "tag_text": "...", "headline": "...", "subheadline": "..." },
     { "slide_number": 2, "slide_type": "body", "headline": "...", "body_paragraph": "..." },

@@ -72,6 +72,40 @@ export interface TomDeVoz {
   criado_em: string
 }
 
+export interface SlideStyles {
+  primaryColor: string
+  backgroundColor: string
+  textColor: string
+  ctaBackgroundColor: string
+  ctaTextColor: string
+  tagColor: string
+  coverHeadlineFontSize: number
+  coverSubheadlineFontSize: number
+  bodyHeadlineFontSize: number
+  bodyParagraphFontSize: number
+  ctaFontSize: number
+  coverTextAlign: 'left' | 'center' | 'right'
+  bodyTextAlign: 'left' | 'center' | 'right'
+  padding: number
+}
+
+export const DEFAULT_SLIDE_STYLES: SlideStyles = {
+  primaryColor: '#6D28D9',
+  backgroundColor: '#FFFFFF',
+  textColor: '#1A1A1A',
+  ctaBackgroundColor: '#6D28D9',
+  ctaTextColor: '#FFFFFF',
+  tagColor: '#6D28D9',
+  coverHeadlineFontSize: 32,
+  coverSubheadlineFontSize: 14,
+  bodyHeadlineFontSize: 24,
+  bodyParagraphFontSize: 16,
+  ctaFontSize: 28,
+  coverTextAlign: 'left',
+  bodyTextAlign: 'left',
+  padding: 24,
+}
+
 export interface DesignSystem {
   id: string
   name: string

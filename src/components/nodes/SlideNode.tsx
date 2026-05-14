@@ -2,12 +2,15 @@ import { useState } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import { RotateCcw, Wand2, Upload, Trash2, ChevronLeft, ChevronRight, Image } from 'lucide-react'
 import Badge from '../ui/Badge'
-import type { CarouselSlide, DesignSystem } from '../../data/mock'
+import Spinner from '../ui/Spinner'
+import type { CarouselSlide, SlideStyles } from '../../data/mock'
+import { DEFAULT_SLIDE_STYLES as DSS } from '../../data/mock'
 
 export interface SlideNodeData {
   slide: CarouselSlide
-  designSystem: DesignSystem | null
+  styles: SlideStyles | null
   totalSlides: number
+  imageGenerating?: boolean
   onEditarTexto: (slideId: string, campo: string, valor: string) => Promise<void>
   onResetarTexto: (slideId: string) => Promise<void>
   onAbrirRegenerar: (slideId: string, campo: string, textoAtual: string) => void
@@ -21,19 +24,23 @@ interface Props {
   data: SlideNodeData
 }
 
-const SLIDE_TYPE_LABEL: Record<string, string> = {
-  cover: 'Capa',
-  body: 'Corpo',
-  cta: 'CTA',
+const SLIDE_TYPE_LABEL: Record<string, string> = { cover: 'Capa', body: 'Corpo', cta: 'CTA' }
+
+const SCALE = 0.38
+
+function px(size: number) {
+  return `${Math.max(8, Math.round(size * SCALE))}px`
 }
 
 export default function SlideNode({ data }: Props) {
-  const { slide, totalSlides, onEditarTexto, onResetarTexto, onAbrirRegenerar, onAbrirGerarImagem, onUploadImagem, onRemoverImagem, onNavegar } = data
+  const { slide, styles, totalSlides, imageGenerating, onEditarTexto, onResetarTexto, onAbrirRegenerar, onAbrirGerarImagem, onUploadImagem, onRemoverImagem, onNavegar } = data
   const [editandoCampo, setEditandoCampo] = useState<string | null>(null)
   const [valorTemp, setValorTemp] = useState('')
 
-  const bg = '#FFFFFF'
-  const accent = '#6D28D9'
+  const s = styles ?? DSS
+  const isCTA = slide.slide_type === 'cta'
+  const slideBg = isCTA ? s.ctaBackgroundColor : s.backgroundColor
+  const pad = Math.max(8, Math.round(s.padding * 0.35))
 
   function iniciarEdicao(campo: string, valorAtual: string) {
     setEditandoCampo(campo)
@@ -61,7 +68,7 @@ export default function SlideNode({ data }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2.5 border-b border-neutral-100">
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: accent }}>
+          <div className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: s.primaryColor }}>
             {slide.slide_number}
           </div>
           <span className="text-label font-semibold text-neutral-700">{SLIDE_TYPE_LABEL[slide.slide_type] ?? slide.slide_type}</span>
@@ -79,32 +86,65 @@ export default function SlideNode({ data }: Props) {
         {/* Preview miniatura 4:5 */}
         <div
           className="w-full rounded-lg overflow-hidden relative"
-          style={{ aspectRatio: '4/5', backgroundColor: slide.slide_type === 'cta' ? accent : bg, border: `1.5px solid ${accent}20` }}
+          style={{ aspectRatio: '4/5', backgroundColor: slideBg, border: `1.5px solid ${s.primaryColor}20` }}
         >
-          {slide.image_url ? (
+          {slide.image_url && (
             <img src={slide.image_url} alt="" className="w-full h-full object-cover absolute inset-0" />
-          ) : null}
-          <div className="absolute inset-0 flex flex-col justify-center px-3 gap-1">
+          )}
+          {imageGenerating && !slide.image_url && (
+            <div className="absolute inset-0 flex items-center justify-center bg-neutral-50/80">
+              <Spinner size="sm" />
+            </div>
+          )}
+          <div
+            className="absolute inset-0 flex flex-col justify-center gap-1"
+            style={{
+              padding: `${pad}px`,
+              textAlign: slide.slide_type === 'body' ? s.bodyTextAlign : s.coverTextAlign,
+            }}
+          >
             {slide.slide_type === 'cover' && (
               <>
-                {slide.tag_text && <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: accent }}>{slide.tag_text}</span>}
-                {slide.headline && <span className="text-[13px] font-black leading-tight" style={{ color: '#111' }}>{slide.headline}</span>}
-                {slide.subheadline && <span className="text-[9px]" style={{ color: '#666' }}>{slide.subheadline}</span>}
+                {slide.tag_text && (
+                  <span className="font-bold uppercase tracking-wider" style={{ fontSize: px(s.coverHeadlineFontSize * 0.375), color: s.tagColor }}>
+                    {slide.tag_text}
+                  </span>
+                )}
+                {slide.headline && (
+                  <span className="font-black leading-tight" style={{ fontSize: px(s.coverHeadlineFontSize), color: s.textColor }}>
+                    {slide.headline}
+                  </span>
+                )}
+                {slide.subheadline && (
+                  <span className="leading-snug" style={{ fontSize: px(s.coverSubheadlineFontSize), color: s.textColor, opacity: 0.7 }}>
+                    {slide.subheadline}
+                  </span>
+                )}
               </>
             )}
             {slide.slide_type === 'body' && (
               <>
-                {slide.headline && <span className="text-[12px] font-bold leading-tight" style={{ color: '#111' }}>{slide.headline}</span>}
-                {slide.body_paragraph && <span className="text-[8px] leading-relaxed" style={{ color: '#333' }}>{slide.body_paragraph}</span>}
+                {slide.headline && (
+                  <span className="font-bold leading-tight" style={{ fontSize: px(s.bodyHeadlineFontSize), color: s.textColor }}>
+                    {slide.headline}
+                  </span>
+                )}
+                {slide.body_paragraph && (
+                  <span className="leading-relaxed" style={{ fontSize: px(s.bodyParagraphFontSize), color: s.textColor, opacity: 0.8 }}>
+                    {slide.body_paragraph}
+                  </span>
+                )}
               </>
             )}
             {slide.slide_type === 'cta' && slide.cta_message && (
-              <span className="text-[12px] font-black text-center leading-tight" style={{ color: '#FFF' }}>{slide.cta_message}</span>
+              <span className="font-black text-center leading-tight" style={{ fontSize: px(s.ctaFontSize), color: s.ctaTextColor }}>
+                {slide.cta_message}
+              </span>
             )}
           </div>
         </div>
 
-        {/* Campos de texto editáveis por tipo */}
+        {/* Campos editáveis */}
         {slide.slide_type === 'cover' && (
           <>
             <CampoTexto label="Tag" campo="tag_text" valor={slide.tag_text} editando={editandoCampo} valorTemp={valorTemp} onIniciar={iniciarEdicao} onSalvar={salvarEdicao} onChange={setValorTemp} onRegenerar={() => onAbrirRegenerar(slide.id, 'tag_text', slide.tag_text ?? '')} />
@@ -149,21 +189,11 @@ export default function SlideNode({ data }: Props) {
 
         {/* Navegação */}
         <div className="flex items-center justify-between pt-1 border-t border-neutral-100">
-          <button
-            onClick={() => onNavegar(slide.slide_number - 1)}
-            disabled={slide.slide_number <= 1}
-            className="p-1 rounded text-neutral-400 hover:text-neutral-700 disabled:opacity-30 transition-colors"
-          >
+          <button onClick={() => onNavegar(slide.slide_number - 1)} disabled={slide.slide_number <= 1} className="p-1 rounded text-neutral-400 hover:text-neutral-700 disabled:opacity-30 transition-colors">
             <ChevronLeft size={14} />
           </button>
-          <span className="text-[10px] text-neutral-400 font-medium">
-            Slide {slide.slide_number} de {totalSlides}
-          </span>
-          <button
-            onClick={() => onNavegar(slide.slide_number + 1)}
-            disabled={slide.slide_number >= totalSlides}
-            className="p-1 rounded text-neutral-400 hover:text-neutral-700 disabled:opacity-30 transition-colors"
-          >
+          <span className="text-[10px] text-neutral-400 font-medium">Slide {slide.slide_number} de {totalSlides}</span>
+          <button onClick={() => onNavegar(slide.slide_number + 1)} disabled={slide.slide_number >= totalSlides} className="p-1 rounded text-neutral-400 hover:text-neutral-700 disabled:opacity-30 transition-colors">
             <ChevronRight size={14} />
           </button>
         </div>
@@ -197,29 +227,12 @@ function CampoTexto({ label, campo, valor, editando, valorTemp, multiline, onIni
       </div>
       {ativo ? (
         multiline ? (
-          <textarea
-            autoFocus
-            value={valorTemp}
-            onChange={(e) => onChange(e.target.value)}
-            onBlur={onSalvar}
-            rows={3}
-            className="w-full px-2 py-1.5 rounded border border-purple-400 text-[11px] text-neutral-900 outline-none resize-none focus:ring-1 focus:ring-purple-300"
-          />
+          <textarea autoFocus value={valorTemp} onChange={(e) => onChange(e.target.value)} onBlur={onSalvar} rows={3} className="w-full px-2 py-1.5 rounded border border-purple-400 text-[11px] text-neutral-900 outline-none resize-none focus:ring-1 focus:ring-purple-300" />
         ) : (
-          <input
-            autoFocus
-            value={valorTemp}
-            onChange={(e) => onChange(e.target.value)}
-            onBlur={onSalvar}
-            onKeyDown={(e) => e.key === 'Enter' && onSalvar()}
-            className="w-full px-2 py-1.5 rounded border border-purple-400 text-[11px] text-neutral-900 outline-none focus:ring-1 focus:ring-purple-300"
-          />
+          <input autoFocus value={valorTemp} onChange={(e) => onChange(e.target.value)} onBlur={onSalvar} onKeyDown={(e) => e.key === 'Enter' && onSalvar()} className="w-full px-2 py-1.5 rounded border border-purple-400 text-[11px] text-neutral-900 outline-none focus:ring-1 focus:ring-purple-300" />
         )
       ) : (
-        <p
-          onClick={() => onIniciar(campo, valor ?? '')}
-          className="text-[11px] text-neutral-700 leading-relaxed px-2 py-1.5 rounded border border-transparent hover:border-neutral-200 hover:bg-neutral-50 cursor-text transition-colors min-h-[28px]"
-        >
+        <p onClick={() => onIniciar(campo, valor ?? '')} className="text-[11px] text-neutral-700 leading-relaxed px-2 py-1.5 rounded border border-transparent hover:border-neutral-200 hover:bg-neutral-50 cursor-text transition-colors min-h-[28px]">
           {valor || <span className="text-neutral-300 italic">Clique para editar</span>}
         </p>
       )}

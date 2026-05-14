@@ -18,6 +18,7 @@ export interface MainNodeData {
     designSystemId: string
     designSystemMarkdown: string
     totalSlides: number
+    autoGerarImagens: boolean
   }) => Promise<void>
   gerating?: boolean
 }
@@ -38,6 +39,7 @@ export default function MainNode({ data }: Props) {
   const [tomId, setTomId] = useState('')
   const [designSystemId, setDesignSystemId] = useState('')
   const [totalSlides, setTotalSlides] = useState(5)
+  const [autoGerarImagens, setAutoGerarImagens] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
 
   function adicionarUrl() {
@@ -63,6 +65,7 @@ export default function MainNode({ data }: Props) {
       designSystemId,
       designSystemMarkdown: ds?.markdown ?? '',
       totalSlides,
+      autoGerarImagens,
     })
   }
 
@@ -179,6 +182,17 @@ export default function MainNode({ data }: Props) {
             <span>20</span>
           </div>
         </Field>
+
+        {/* Toggle imagens automáticas */}
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <div
+            onClick={() => setAutoGerarImagens((v) => !v)}
+            className={`w-8 h-4 rounded-full transition-colors flex-shrink-0 ${autoGerarImagens ? 'bg-purple-600' : 'bg-neutral-200'}`}
+          >
+            <div className={`w-3 h-3 bg-white rounded-full shadow mt-0.5 transition-transform ${autoGerarImagens ? 'translate-x-4' : 'translate-x-0.5'}`} />
+          </div>
+          <span className="text-[11px] text-neutral-600">Gerar imagens automaticamente</span>
+        </label>
 
         <Button onClick={handleGerar} loading={generating} size="lg" className="w-full">
           {generating ? 'Gerando carrossel…' : 'Gerar carrossel'}

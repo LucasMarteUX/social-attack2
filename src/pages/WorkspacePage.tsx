@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import {
   ReactFlow,
   Background,
@@ -18,10 +18,10 @@ import RegenerateTextModal from '../components/modals/RegenerateTextModal'
 import GenerateImageModal from '../components/modals/GenerateImageModal'
 import { useCarousels } from '../hooks/useCarousels'
 import { useCarouselSlides } from '../hooks/useCarouselSlides'
-import { useDesignSystems } from '../hooks/useDesignSystems'
-import { gerarRoteirosNodes } from '../lib/gemini'
+import { gerarRoteirosNodes, generateSlideImage } from '../lib/gemini'
 import { supabase } from '../lib/supabase'
-import type { CarouselSlide } from '../data/mock'
+import type { CarouselSlide, SlideStyles } from '../data/mock'
+import { DEFAULT_SLIDE_STYLES } from '../data/mock'
 
 const NODE_TYPES = { mainNode: MainNode, slideNode: SlideNode }
 
@@ -33,21 +33,20 @@ const SLIDE_GAP_X = 340
 
 export default function WorkspacePage() {
   const { criar: criarCarousel, atualizarStatus } = useCarousels()
-  const { getById: getDesignSystem } = useDesignSystems()
 
   const [carouselId, setCarouselId] = useState<string | null>(null)
   const { slides, inserirSlides, editarTexto, resetarTexto, atualizarImagem, atualizarTextoRegenerado, buscarHistorico } = useCarouselSlides(carouselId ?? '')
 
+  const [slideStyles, setSlideStyles] = useState<SlideStyles>(DEFAULT_SLIDE_STYLES)
+  // ref para acesso nas closures de refreshSlideNode sem ficar stale
+  const slideStylesRef = useRef<SlideStyles>(DEFAULT_SLIDE_STYLES)
+
   const [, setGenerating] = useState(false)
 
-  // Modal Regenerar Texto
   const [regenModal, setRegenModal] = useState<{ slideId: string; campo: string; textoAtual: string; slideType: string; historico: ReturnType<typeof buscarHistorico> extends Promise<infer T> ? T : never } | null>(null)
   const [regenHistorico, setRegenHistorico] = useState<{ id: string; new_value: string | null; created_at: string }[]>([])
 
-  // Modal Gerar Imagem
   const [imageModal, setImageModal] = useState<{ slideId: string; promptInicial: string } | null>(null)
-
-  const [designSystemId, setDesignSystemId] = useState<string>('')
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([
     {
@@ -72,15 +71,12 @@ export default function WorkspacePage() {
     designSystemId: string
     designSystemMarkdown: string
     totalSlides: number
+    autoGerarImagens: boolean
   }) {
     setGenerating(true)
-    setDesignSystemId(params.designSystemId)
-
-    // Atualiza loading no node principal
     setNodes((nds) => nds.map((n) => n.id === MAIN_NODE_ID ? { ...n, data: { ...n.data, gerating: true } } : n))
 
     try {
-      // 1. Cria carrossel no Supabase
       const carousel = await criarCarousel({
         title: params.titulo,
         description: params.descricao || null,
@@ -91,10 +87,8 @@ export default function WorkspacePage() {
         tone_of_voice_id: params.tomId || null,
       })
       setCarouselId(carousel.id)
-
       await atualizarStatus(carousel.id, 'generating')
 
-      // 2. Chama Gemini
       const script = await gerarRoteirosNodes({
         titulo: params.titulo,
         descricao: params.descricao,
@@ -106,7 +100,11 @@ export default function WorkspacePage() {
         totalSlides: params.totalSlides,
       })
 
-      // 3. Insere slides no Supabase
+      // Salva estilos extraídos do design system
+      const estilos = script.styles ?? DEFAULT_SLIDE_STYLES
+      setSlideStyles(estilos)
+      slideStylesRef.current = estilos
+
       const slidesParaInserir = script.slides.map((s) => ({
         carousel_id: carousel.id,
         slide_number: s.slide_number,
@@ -133,8 +131,11 @@ export default function WorkspacePage() {
       const novosSlides = await inserirSlides(slidesParaInserir)
       await atualizarStatus(carousel.id, 'ready')
 
-      // 4. Renderiza sub-nodes no canvas
-      renderizarSlideNodes(novosSlides, params.designSystemId)
+      renderizarSlideNodes(novosSlides, estilos)
+
+      if (params.autoGerarImagens) {
+        gerarImagensEmBackground(novosSlides, carousel.id).catch(console.error)
+      }
 
     } catch (e) {
       console.error(e)
@@ -144,7 +145,52 @@ export default function WorkspacePage() {
     }
   }
 
-  function renderizarSlideNodes(slidesList: CarouselSlide[], dsId: string) {
+  async function gerarImagensEmBackground(slidesList: CarouselSlide[], cId: string) {
+    // Marca todos os slides como "gerando imagem"
+    setNodes((nds) => nds.map((n) => {
+      if (!n.id.startsWith('slide-')) return n
+      return { ...n, data: { ...n.data, imageGenerating: true } }
+    }))
+
+    await Promise.allSettled(
+      slidesList.map(async (slide) => {
+        const promptBase = [slide.headline, slide.body_paragraph, slide.cta_message, slide.tag_text]
+          .filter(Boolean).join('. ')
+        const prompt = `${promptBase}. Estilo editorial Instagram, proporção 4:5, sem texto na imagem, fotografia ou ilustração.`
+        try {
+          const dataUrl = await generateSlideImage(prompt)
+          const path = `${cId}/${slide.id}/auto.jpg`
+          const blob = dataURLtoBlob(dataUrl)
+          const { data: storageData, error } = await supabase.storage
+            .from('carousel-images')
+            .upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
+          if (!error && storageData) {
+            const { data: urlData } = supabase.storage.from('carousel-images').getPublicUrl(storageData.path)
+            await atualizarImagem(slide.id, urlData.publicUrl, 'generated', prompt)
+          }
+        } catch {
+          // falha silenciosa por slide individual
+        } finally {
+          setNodes((nds) => nds.map((n) => {
+            if (n.id !== `slide-${slide.id}`) return n
+            return { ...n, data: { ...n.data, imageGenerating: false } }
+          }))
+          refreshSlideNode(slide.id)
+        }
+      })
+    )
+  }
+
+  function dataURLtoBlob(dataUrl: string): Blob {
+    const [header, data] = dataUrl.split(',')
+    const mime = header.match(/:(.*?);/)?.[1] ?? 'image/jpeg'
+    const binary = atob(data)
+    const arr = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) arr[i] = binary.charCodeAt(i)
+    return new Blob([arr], { type: mime })
+  }
+
+  function renderizarSlideNodes(slidesList: CarouselSlide[], estilos: SlideStyles) {
     const totalWidth = slidesList.length * SLIDE_GAP_X
     const startX = MAIN_NODE_X - totalWidth / 2 + SLIDE_GAP_X / 2
 
@@ -152,7 +198,7 @@ export default function WorkspacePage() {
       id: `slide-${slide.id}`,
       type: 'slideNode',
       position: { x: startX + i * SLIDE_GAP_X, y: MAIN_NODE_Y + SLIDE_OFFSET_Y },
-      data: buildSlideData(slide, dsId, slidesList.length),
+      data: buildSlideData(slide, estilos, slidesList.length),
     }))
 
     const novosEdges: Edge[] = slidesList.map((slide) => ({
@@ -162,18 +208,14 @@ export default function WorkspacePage() {
       style: { stroke: '#6D28D9', strokeWidth: 1.5, opacity: 0.4 },
     }))
 
-    setNodes((nds) => [
-      nds.find((n) => n.id === MAIN_NODE_ID)!,
-      ...novosNodes,
-    ])
+    setNodes((nds) => [nds.find((n) => n.id === MAIN_NODE_ID)!, ...novosNodes])
     setEdges(novosEdges)
   }
 
-  function buildSlideData(slide: CarouselSlide, dsId: string, total: number) {
-    const ds = getDesignSystem(dsId) ?? null
+  function buildSlideData(slide: CarouselSlide, estilos: SlideStyles, total: number) {
     return {
       slide,
-      designSystem: ds,
+      styles: estilos,
       totalSlides: total,
       onEditarTexto: async (slideId: string, campo: string, valor: string) => {
         await editarTexto(slideId, campo as keyof Pick<CarouselSlide, 'tag_text' | 'headline' | 'subheadline' | 'body_paragraph' | 'cta_message'>, valor)
@@ -204,15 +246,7 @@ export default function WorkspacePage() {
         await atualizarImagem(slideId, null, 'none')
         refreshSlideNode(slideId)
       },
-      onNavegar: (slideNumber: number) => {
-        const targetNode = nodes.find((n) => {
-          const s = (n.data as { slide?: CarouselSlide }).slide
-          return s && s.slide_number === slideNumber
-        })
-        if (targetNode) {
-          // Foca visualmente no node de destino via fitView futuro
-        }
-      },
+      onNavegar: (_slideNumber: number) => {},
     }
   }
 
@@ -222,7 +256,7 @@ export default function WorkspacePage() {
         if (n.id !== `slide-${slideId}`) return n
         const slideAtualizado = slides.find((s) => s.id === slideId)
         if (!slideAtualizado) return n
-        return { ...n, data: buildSlideData(slideAtualizado, designSystemId, slides.length) }
+        return { ...n, data: buildSlideData(slideAtualizado, slideStylesRef.current, slides.length) }
       })
     )
   }
