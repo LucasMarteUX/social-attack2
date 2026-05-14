@@ -28,7 +28,7 @@ const SLIDE_TYPE_LABEL: Record<string, string> = {
 }
 
 export default function SlideNode({ data }: Props) {
-  const { slide, designSystem, totalSlides, onEditarTexto, onResetarTexto, onAbrirRegenerar, onAbrirGerarImagem, onUploadImagem, onRemoverImagem, onNavegar } = data
+  const { slide, totalSlides, onEditarTexto, onResetarTexto, onAbrirRegenerar, onAbrirGerarImagem, onUploadImagem, onRemoverImagem, onNavegar } = data
   const [editandoCampo, setEditandoCampo] = useState<string | null>(null)
   const [valorTemp, setValorTemp] = useState('')
 
