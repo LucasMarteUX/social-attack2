@@ -16,10 +16,10 @@ export default function NavItem({ to, icon, label, onClick, end }: NavItemProps)
       onClick={onClick}
       end={end}
       className={({ isActive }) =>
-        `flex items-center gap-3 px-3 py-2 rounded-full text-body-md font-medium transition-colors ${
+        `flex items-center gap-3 px-3 py-2 rounded-lg text-body-md font-medium transition-colors ${
           isActive
-            ? 'bg-purple-50 text-purple-700'
-            : 'text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700'
+            ? 'bg-line/[0.08] text-ink'
+            : 'text-ink-muted hover:bg-line/[0.04] hover:text-ink'
         }`
       }
     >

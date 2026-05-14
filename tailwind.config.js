@@ -4,6 +4,37 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Tokens semânticos (CSS vars — flipam entre dark/light)
+        bg: 'rgb(var(--bg) / <alpha-value>)',
+        surface: 'rgb(var(--surface) / <alpha-value>)',
+        'surface-2': 'rgb(var(--surface-2) / <alpha-value>)',
+        'surface-3': 'rgb(var(--surface-3) / <alpha-value>)',
+        line: 'rgb(var(--line) / <alpha-value>)',
+        ink: 'rgb(var(--ink) / <alpha-value>)',
+        'ink-muted': 'rgb(var(--ink-muted) / <alpha-value>)',
+        'ink-faint': 'rgb(var(--ink-faint) / <alpha-value>)',
+        accent: {
+          DEFAULT: 'rgb(var(--accent) / <alpha-value>)',
+          strong: 'rgb(var(--accent-strong) / <alpha-value>)',
+        },
+        ring: 'rgb(var(--ring) / <alpha-value>)',
+
+        // Neutral (CSS vars — invertido em dark, original em light)
+        neutral: {
+          0: 'rgb(var(--neutral-0) / <alpha-value>)',
+          50: 'rgb(var(--neutral-50) / <alpha-value>)',
+          100: 'rgb(var(--neutral-100) / <alpha-value>)',
+          200: 'rgb(var(--neutral-200) / <alpha-value>)',
+          300: 'rgb(var(--neutral-300) / <alpha-value>)',
+          400: 'rgb(var(--neutral-400) / <alpha-value>)',
+          500: 'rgb(var(--neutral-500) / <alpha-value>)',
+          600: 'rgb(var(--neutral-600) / <alpha-value>)',
+          700: 'rgb(var(--neutral-700) / <alpha-value>)',
+          800: 'rgb(var(--neutral-800) / <alpha-value>)',
+          900: 'rgb(var(--neutral-900) / <alpha-value>)',
+        },
+
+        // Cores fixas (status + brand legacy — usadas só onde semantica importa)
         purple: {
           50: '#F8EEFF',
           100: '#EDD9FF',
@@ -18,7 +49,9 @@ export default {
           50: '#FDE6EB',
           100: '#FCCDD7',
           200: '#F9A8B9',
-          600: '#BE185D',
+          500: '#EC4899',
+          600: '#DB2777',
+          700: '#BE185D',
           800: '#9B1A4A',
           900: '#7D2D3E',
         },
@@ -48,19 +81,6 @@ export default {
           600: '#EA580C',
           700: '#E55A30',
           800: '#C2410C',
-        },
-        neutral: {
-          0: '#FFFFFF',
-          50: '#FBFBFB',
-          100: '#F4F4F4',
-          200: '#E8E8E8',
-          300: '#D4D4D4',
-          400: '#A8A8A8',
-          500: '#737373',
-          600: '#525252',
-          700: '#3A3A3A',
-          800: '#262626',
-          900: '#1A1A1A',
         },
         red: {
           50: '#FDE8E8',
