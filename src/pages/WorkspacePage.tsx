@@ -305,6 +305,8 @@ export default function WorkspacePage() {
     designSystemReferenceUrls: string[]
     totalSlides: number
     autoGerarImagens: boolean
+    capaPromptFundo?: string
+    capaReferenceInlineParts?: GeminiImageInlinePart[]
   }) {
     if (geracaoLockRef.current) return
     geracaoLockRef.current = true
@@ -364,12 +366,12 @@ export default function WorkspacePage() {
 
       const ordered = [...novosSlides].sort((a, b) => a.slide_number - b.slide_number)
       const byNumber = new Map(contentSlides.map((s) => [s.slide_number, s]))
-      const slidesParaImagens: CarouselSlide[] = []
+      let slidesForBatch: CarouselSlide[] = []
 
       for (const row of ordered) {
         const gen = byNumber.get(row.slide_number)
         if (!gen) {
-          slidesParaImagens.push(row)
+          slidesForBatch.push(row)
           continue
         }
         const atualizado = await aplicarTextoGerado(row.id, {
@@ -379,8 +381,78 @@ export default function WorkspacePage() {
           body_paragraph: gen.body_paragraph ?? null,
           cta_message: gen.cta_message ?? null,
         })
-        slidesParaImagens.push(atualizado ?? row)
+        slidesForBatch.push(atualizado ?? row)
         if (atualizado) refreshSlideNode(row.id, atualizado)
+      }
+
+      const capaExplicit =
+        Boolean(params.capaPromptFundo?.trim()) ||
+        (params.capaReferenceInlineParts?.length ?? 0) > 0
+
+      if (capaExplicit) {
+        const cover = slidesForBatch.find((s) => s.slide_number === 1)
+        if (cover) {
+          setNodes((nds) =>
+            nds.map((n) => {
+              if (n.id !== `slide-${cover.id}`) return n
+              const d = n.data as unknown as SlideNodeData
+              return { ...n, data: { ...d, imageGenerating: true } }
+            })
+          )
+          try {
+            const node = carouselSlideToNodeSlide(cover)
+            const histCapa = [
+              'Capa — node principal',
+              params.capaPromptFundo?.trim(),
+              params.capaReferenceInlineParts?.length
+                ? `${params.capaReferenceInlineParts.length} ref(s)`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')
+            const dataUrl = await gerarSlideCompleto({
+              slide: node,
+              styles: estilos,
+              visualBrief: visualBrief.trim() || undefined,
+              referenceDescription,
+              narrativaVisual: params.capaPromptFundo?.trim() || undefined,
+              referenceInlineParts: params.capaReferenceInlineParts,
+            })
+            const path = `${carousel.id}/${cover.id}/cover-main-${Date.now()}.png`
+            const blob = dataURLtoBlob(dataUrl)
+            const { data: storageData, error: upErr } = await supabase.storage
+              .from('carousel-images')
+              .upload(path, blob, { upsert: true, contentType: blob.type || 'image/png' })
+            if (!upErr && storageData) {
+              const { data: urlData } = supabase.storage
+                .from('carousel-images')
+                .getPublicUrl(storageData.path)
+              const atualizadoCapa = await atualizarImagem(
+                cover.id,
+                urlData.publicUrl,
+                'generated',
+                histCapa,
+                true
+              )
+              if (atualizadoCapa) {
+                slidesForBatch = slidesForBatch.map((s) =>
+                  s.id === cover.id ? atualizadoCapa : s
+                )
+                refreshSlideNode(cover.id, atualizadoCapa)
+              }
+            } else if (upErr) console.error('Upload capa node principal:', upErr.message)
+          } catch (err) {
+            console.error('Geração capa node principal', err)
+          } finally {
+            setNodes((nds) =>
+              nds.map((n) => {
+                if (n.id !== `slide-${cover.id}`) return n
+                const d = n.data as unknown as SlideNodeData
+                return { ...n, data: { ...d, imageGenerating: false } }
+              })
+            )
+          }
+        }
       }
 
       await atualizarStatus(carousel.id, 'ready')
@@ -394,12 +466,13 @@ export default function WorkspacePage() {
           tomNome: params.tomNome,
           tomDescricao: params.tomDescricao,
         }
-        void gerarImagensEmBackground(slidesParaImagens, carousel.id, {
+        void gerarImagensEmBackground(slidesForBatch, carousel.id, {
           styles: estilos,
           visualBrief,
           referenceDescription,
           carousel: carouselPromptCtx,
           referenceImageUrls: refUrls,
+          skipSlideNumbers: capaExplicit ? [1] : undefined,
         }).catch((e) => {
           console.error(e)
           setAvisoImagens(e instanceof Error ? e.message : 'Falha ao gerar imagens em segundo plano.')
@@ -427,11 +500,13 @@ export default function WorkspacePage() {
       referenceDescription: string
       carousel: CarouselImagePromptContext
       referenceImageUrls: string[]
+      skipSlideNumbers?: number[]
     }
   ) {
     const todosNodes = slidesList.map(carouselSlideToNodeSlide)
     let falhas = 0
     for (const slide of slidesList) {
+      if (ctx.skipSlideNumbers?.includes(slide.slide_number)) continue
       let atualizado: CarouselSlide | null = null
       setNodes((nds) =>
         nds.map((n) =>
