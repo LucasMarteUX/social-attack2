@@ -22,6 +22,7 @@ export interface MainNodeData {
     autoGerarImagens: boolean
   }) => Promise<void>
   gerating?: boolean
+  geracaoErro?: string | null
 }
 
 interface Props {
@@ -90,7 +91,11 @@ export default function MainNode({ data }: Props) {
 
       <div className="p-4 flex flex-col gap-4">
 
-        {erro && <p className="text-[11px] text-red-600 bg-red-50 p-2 rounded-lg">{erro}</p>}
+        {(erro || data.geracaoErro) && (
+          <p className="text-[11px] text-red-600 bg-red-50 p-2 rounded-lg">
+            {erro ?? data.geracaoErro}
+          </p>
+        )}
 
         {/* Título */}
         <Field label="Título *">

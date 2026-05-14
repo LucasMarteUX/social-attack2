@@ -146,6 +146,54 @@ interface ParsedNodeCarouselJson {
   slides: NodeSlide[]
 }
 
+function normalizeNodeSlides(raw: NodeSlide[], totalSlides: number): NodeSlide[] {
+  if (totalSlides < 1) return []
+  const list = Array.isArray(raw) ? raw.filter(Boolean) : []
+  const byNum = new Map<number, NodeSlide>()
+  for (const s of list) {
+    const n = Number(s.slide_number)
+    if (!Number.isFinite(n)) continue
+    const clamped = Math.min(Math.max(Math.round(n), 1), totalSlides)
+    byNum.set(clamped, { ...s, slide_number: clamped })
+  }
+  const sampleBody = [...byNum.values()].find((v) => v.slide_type === 'body')
+  const out: NodeSlide[] = []
+  for (let i = 1; i <= totalSlides; i++) {
+    const existing = byNum.get(i)
+    if (existing) {
+      let slide_type = existing.slide_type
+      if (i === 1) slide_type = 'cover'
+      else if (i === totalSlides) slide_type = 'cta'
+      else slide_type = 'body'
+      out.push({ ...existing, slide_type })
+      continue
+    }
+    if (i === 1) {
+      out.push({
+        slide_number: 1,
+        slide_type: 'cover',
+        tag_text: 'Destaque',
+        headline: 'Carrossel',
+        subheadline: '',
+      })
+    } else if (i === totalSlides) {
+      out.push({
+        slide_number: totalSlides,
+        slide_type: 'cta',
+        cta_message: 'Salve este post para revisitar depois.',
+      })
+    } else {
+      out.push({
+        slide_number: i,
+        slide_type: 'body',
+        headline: `Ponto ${i}`,
+        body_paragraph: sampleBody?.body_paragraph ?? 'Detalhes na sequência.',
+      })
+    }
+  }
+  return out
+}
+
 export function carouselSlideToNodeSlide(s: CarouselSlide): NodeSlide {
   return {
     slide_number: s.slide_number,
@@ -227,7 +275,7 @@ Formato obrigatório (preencha "styles" com os valores reais do design system ac
   const mergedStyles: SlideStyles = { ...DEFAULT_SLIDE_STYLES, ...(parsed.styles ?? {}) }
   return {
     styles: mergedStyles,
-    slides: parsed.slides,
+    slides: normalizeNodeSlides(parsed.slides ?? [], totalSlides),
   }
 }
 

@@ -14,7 +14,7 @@ import {
   type Connection,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import MainNode from '../components/nodes/MainNode'
+import MainNode, { type MainNodeData } from '../components/nodes/MainNode'
 import SlideNode from '../components/nodes/SlideNode'
 import RegenerateTextModal from '../components/modals/RegenerateTextModal'
 import GenerateImageModal from '../components/modals/GenerateImageModal'
@@ -49,6 +49,8 @@ const STATUS_VARIANTS: Record<string, 'neutral' | 'alert' | 'success'> = {
   published: 'neutral',
 }
 
+type GerarParams = Parameters<MainNodeData['onGerar']>[0]
+
 export default function WorkspacePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -70,6 +72,10 @@ export default function WorkspacePage() {
   const [regenModal, setRegenModal] = useState<{ slideId: string; campo: string; textoAtual: string; slideType: string; historico: ReturnType<typeof buscarHistorico> extends Promise<infer T> ? T : never } | null>(null)
   const [regenHistorico, setRegenHistorico] = useState<{ id: string; new_value: string | null; created_at: string }[]>([])
   const [imageModal, setImageModal] = useState<{ slideId: string } | null>(null)
+  const handleGerarRef = useRef<(p: GerarParams) => Promise<void>>(async () => {
+    throw new Error('Workspace ainda não está pronto.')
+  })
+  const [geracaoErro, setGeracaoErro] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -125,11 +131,25 @@ export default function WorkspacePage() {
       id: MAIN_NODE_ID,
       type: 'mainNode',
       position: { x: MAIN_NODE_X, y: MAIN_NODE_Y },
-      data: { onGerar: handleGerar, gerating: false },
+      data: {
+        onGerar: async (p: GerarParams) => handleGerarRef.current(p),
+        gerating: false,
+        geracaoErro: null,
+      },
     }] : []
   )
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge(params, eds)), [setEdges])
+
+  useEffect(() => {
+    setNodes((nds) =>
+      nds.some((n) => n.id === MAIN_NODE_ID)
+        ? nds.map((n) =>
+            n.id === MAIN_NODE_ID ? { ...n, data: { ...n.data, geracaoErro } } : n
+          )
+        : nds
+    )
+  }, [geracaoErro, setNodes])
 
   async function handleGerar(params: {
     titulo: string
@@ -145,6 +165,7 @@ export default function WorkspacePage() {
     totalSlides: number
     autoGerarImagens: boolean
   }) {
+    setGeracaoErro(null)
     setGenerating(true)
     setNodes((nds) => nds.map((n) => n.id === MAIN_NODE_ID ? { ...n, data: { ...n.data, gerating: true } } : n))
 
@@ -217,9 +238,9 @@ export default function WorkspacePage() {
       await atualizarStatus(carousel.id, 'ready')
 
       renderizarSlideNodes(novosSlides, estilos)
+      slidesInitialized.current = true
 
-      // Atualiza URL sem re-montar
-      window.history.replaceState(null, '', `/workspace/${carousel.id}`)
+      navigate(`/workspace/${carousel.id}`, { replace: true })
 
       if (params.autoGerarImagens) {
         gerarImagensEmBackground(novosSlides, carousel.id, {
@@ -231,11 +252,14 @@ export default function WorkspacePage() {
 
     } catch (e) {
       console.error(e)
+      setGeracaoErro(e instanceof Error ? e.message : 'Não foi possível gerar o carrossel.')
     } finally {
       setGenerating(false)
       setNodes((nds) => nds.map((n) => n.id === MAIN_NODE_ID ? { ...n, data: { ...n.data, gerating: false } } : n))
     }
   }
+
+  handleGerarRef.current = handleGerar
 
   async function gerarImagensEmBackground(
     slidesList: CarouselSlide[],
