@@ -32,8 +32,8 @@ export default function CriativoDetailPage() {
   if (!criativo) {
     return (
       <div className="flex flex-col items-center justify-center py-24">
-        <p className="text-body-md text-neutral-500">Criativo não encontrado.</p>
-        <Link to="/criativos" className="mt-4 text-purple-700 text-body-md font-medium hover:underline">
+        <p className="text-body-md text-ink-muted">Criativo não encontrado.</p>
+        <Link to="/criativos" className="mt-4 text-ink text-body-md font-medium hover:underline">
           Voltar para Criativos
         </Link>
       </div>
@@ -59,10 +59,10 @@ export default function CriativoDetailPage() {
   return (
     <div className="max-w-6xl">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-label text-neutral-400 mb-6">
-        <Link to="/criativos" className="hover:text-purple-700 transition-colors">Criativos</Link>
+      <div className="flex items-center gap-2 text-label text-ink-faint mb-6">
+        <Link to="/criativos" className="hover:text-ink transition-colors">Criativos</Link>
         <ChevronRight size={14} />
-        <span className="font-medium text-neutral-600 truncate max-w-[200px]">{criativo.titulo}</span>
+        <span className="font-medium text-ink-muted truncate max-w-[200px]">{criativo.titulo}</span>
       </div>
 
       {/* Header */}
@@ -73,17 +73,17 @@ export default function CriativoDetailPage() {
             {categoria && (
               <div className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: categoria.cor }} />
-                <span className="text-label text-neutral-500">{categoria.nome}</span>
+                <span className="text-label text-ink-muted">{categoria.nome}</span>
               </div>
             )}
-            <span className="text-label text-neutral-300">·</span>
-            <div className="flex items-center gap-1 text-label text-neutral-400">
+            <span className="text-label text-ink-faint">·</span>
+            <div className="flex items-center gap-1 text-label text-ink-faint">
               <Instagram size={12} />
               {criativo.slides.length} slides
             </div>
           </div>
-          <h1 className="text-heading-xl font-bold text-neutral-900">{criativo.titulo}</h1>
-          <p className="text-label text-neutral-400 mt-1">
+          <h1 className="text-heading-xl font-bold text-ink">{criativo.titulo}</h1>
+          <p className="text-label text-ink-faint mt-1">
             Atualizado em {new Date(criativo.atualizado_em).toLocaleDateString('pt-BR')}
           </p>
         </div>
@@ -104,10 +104,10 @@ export default function CriativoDetailPage() {
         {/* Carrossel */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-label font-semibold text-neutral-500 uppercase tracking-wide">
+            <p className="text-label font-semibold text-ink-muted uppercase tracking-wide">
               Preview do post
             </p>
-            <span className="text-[11px] font-medium text-neutral-400">Arraste →</span>
+            <span className="text-[11px] font-medium text-ink-faint">Arraste →</span>
           </div>
 
           <SlideCarousel
@@ -129,29 +129,29 @@ export default function CriativoDetailPage() {
 
         {/* Legenda e hashtags */}
         <div className="flex flex-col gap-4">
-          <div className="p-6 rounded-2xl bg-white border border-neutral-100 shadow-sm">
+          <div className="p-6 rounded-2xl bg-surface border border-line/[0.08] shadow-sm">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-body-lg font-semibold text-neutral-900">Legenda</h2>
+              <h2 className="text-body-lg font-semibold text-ink">Legenda</h2>
               <Button variant="ghost" size="sm" onClick={handleCopiarLegenda}>
                 <Copy size={14} />
                 {copiado ? 'Copiado!' : 'Copiar'}
               </Button>
             </div>
-            <p className="text-body-md text-neutral-700 whitespace-pre-line leading-relaxed">
+            <p className="text-body-md text-ink-muted whitespace-pre-line leading-relaxed">
               {criativo.legenda}
             </p>
           </div>
 
-          <div className="p-6 rounded-2xl bg-white border border-neutral-100 shadow-sm">
-            <h2 className="text-body-lg font-semibold text-neutral-900 mb-3 flex items-center gap-2">
-              <Hash size={16} className="text-purple-600" />
+          <div className="p-6 rounded-2xl bg-surface border border-line/[0.08] shadow-sm">
+            <h2 className="text-body-lg font-semibold text-ink mb-3 flex items-center gap-2">
+              <Hash size={16} className="text-ink-muted" />
               Hashtags
             </h2>
             <div className="flex flex-wrap gap-2">
               {criativo.hashtags.map((h) => (
                 <span
                   key={h}
-                  className="px-3 py-1 rounded-full bg-purple-50 text-purple-700 text-label font-medium"
+                  className="px-3 py-1 rounded-full bg-accent/[0.08] text-ink text-label font-medium"
                 >
                   {h}
                 </span>
@@ -160,11 +160,11 @@ export default function CriativoDetailPage() {
           </div>
 
           {/* Slide ativo info */}
-          <div className="p-4 rounded-xl bg-neutral-50 border border-neutral-100">
-            <p className="text-[11px] font-bold text-neutral-400 uppercase tracking-wide mb-1">
+          <div className="p-4 rounded-xl bg-line/[0.04] border border-line/[0.08]">
+            <p className="text-[11px] font-bold text-ink-faint uppercase tracking-wide mb-1">
               Slide {slideAtivo + 1} de {criativo.slides.length}
             </p>
-            <p className="text-body-sm text-neutral-700 leading-relaxed whitespace-pre-line">
+            <p className="text-body-sm text-ink-muted leading-relaxed whitespace-pre-line">
               {criativo.slides[slideAtivo]?.texto}
             </p>
           </div>
@@ -173,9 +173,9 @@ export default function CriativoDetailPage() {
 
       {/* Modal excluir */}
       <Modal open={excluindo} onClose={() => setExcluindo(false)} title="Excluir criativo">
-        <p className="text-body-md text-neutral-600 mb-6">
+        <p className="text-body-md text-ink-muted mb-6">
           Tem certeza que deseja excluir{' '}
-          <strong className="text-neutral-900">"{criativo.titulo}"</strong>?
+          <strong className="text-ink">"{criativo.titulo}"</strong>?
         </p>
         <div className="flex gap-3 justify-end">
           <Button variant="ghost" onClick={() => setExcluindo(false)}>Cancelar</Button>

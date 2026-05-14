@@ -94,8 +94,8 @@ export default function TodosPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-display-md font-bold text-neutral-900 tracking-tight">To-Do</h1>
-          <p className="text-body-md text-neutral-500 mt-1">
+          <h1 className="text-display-md font-bold text-ink tracking-tight">To-Do</h1>
+          <p className="text-body-md text-ink-muted mt-1">
             {totalPendentes} pendente{totalPendentes === 1 ? '' : 's'}
             {urgentes > 0 && <span className="text-coral-700 font-medium"> · {urgentes} urgente{urgentes === 1 ? '' : 's'}</span>}
           </p>
@@ -108,14 +108,14 @@ export default function TodosPage() {
 
       {/* Stats rápidas */}
       <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="rounded-2xl bg-white border border-neutral-100 p-4 shadow-card">
+        <div className="rounded-2xl bg-surface border border-line/[0.08] p-4 shadow-card">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-lg bg-neutral-100 flex items-center justify-center">
-              <CheckCircle2 size={14} className="text-neutral-600" />
+            <div className="w-7 h-7 rounded-lg bg-line/[0.06] flex items-center justify-center">
+              <CheckCircle2 size={14} className="text-ink-muted" />
             </div>
-            <span className="text-label text-neutral-500 font-medium">Total</span>
+            <span className="text-label text-ink-muted font-medium">Total</span>
           </div>
-          <p className="text-heading-lg font-bold text-neutral-900">{todos.length}</p>
+          <p className="text-heading-lg font-bold text-ink">{todos.length}</p>
         </div>
         <div className="rounded-2xl bg-cyan-gradient p-4 shadow-card">
           <div className="flex items-center gap-2 mb-2">
@@ -124,7 +124,7 @@ export default function TodosPage() {
             </div>
             <span className="text-label text-teal-800 font-medium">Pendentes</span>
           </div>
-          <p className="text-heading-lg font-bold text-neutral-900">{totalPendentes}</p>
+          <p className="text-heading-lg font-bold text-ink">{totalPendentes}</p>
         </div>
         <div className="rounded-2xl bg-sunset-gradient p-4 shadow-card">
           <div className="flex items-center gap-2 mb-2">
@@ -133,7 +133,7 @@ export default function TodosPage() {
             </div>
             <span className="text-label text-coral-800 font-medium">Urgentes</span>
           </div>
-          <p className="text-heading-lg font-bold text-neutral-900">{urgentes}</p>
+          <p className="text-heading-lg font-bold text-ink">{urgentes}</p>
         </div>
       </div>
 
@@ -145,8 +145,8 @@ export default function TodosPage() {
             onClick={() => setFiltro(f.key)}
             className={`px-4 py-1.5 rounded-full text-label font-semibold border transition-colors ${
               filtro === f.key
-                ? 'border-purple-600 bg-purple-50 text-purple-700'
-                : 'border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300'
+                ? 'border-accent bg-accent/[0.08] text-ink'
+                : 'border-line/[0.12] bg-surface text-ink-muted hover:border-line/[0.14]'
             }`}
           >
             {f.label}
@@ -155,22 +155,22 @@ export default function TodosPage() {
       </div>
 
       {/* Lista */}
-      <div className="rounded-3xl bg-white border border-neutral-100 shadow-card overflow-hidden">
+      <div className="rounded-3xl bg-surface border border-line/[0.08] shadow-card overflow-hidden">
         {filtrados.length === 0 ? (
           <div className="py-16 text-center">
-            <p className="text-body-md text-neutral-400">
+            <p className="text-body-md text-ink-faint">
               {filtro === 'concluidas' ? 'Nada concluído ainda.' : 'Nenhuma tarefa por aqui.'}
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-neutral-100">
+          <div className="divide-y divide-line/[0.08]">
             {filtrados.map((todo) => {
               const prazo = formatPrazo(todo.prazo)
 
               return (
                 <div
                   key={todo.id}
-                  className={`group flex items-center gap-4 px-5 py-4 hover:bg-neutral-50 transition-colors ${
+                  className={`group flex items-center gap-4 px-5 py-4 hover:bg-line/[0.04] transition-colors ${
                     todo.concluida ? 'opacity-60' : ''
                   }`}
                 >
@@ -180,7 +180,7 @@ export default function TodosPage() {
                     className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
                       todo.concluida
                         ? 'bg-green-600 border-green-600'
-                        : 'border-neutral-300 hover:border-purple-600 hover:bg-purple-50'
+                        : 'border-line/[0.14] hover:border-accent hover:bg-accent/[0.08]'
                     }`}
                   >
                     {todo.concluida && <Check size={13} className="text-white" />}
@@ -190,8 +190,8 @@ export default function TodosPage() {
                   <p
                     className={`flex-1 text-body-md font-medium ${
                       todo.concluida
-                        ? 'line-through text-neutral-400'
-                        : 'text-neutral-800'
+                        ? 'line-through text-ink-faint'
+                        : 'text-ink'
                     }`}
                   >
                     {todo.titulo}
@@ -201,7 +201,7 @@ export default function TodosPage() {
                   {prazo && !todo.concluida && (
                     <span
                       className={`text-label font-medium ${
-                        prazo.urgente ? 'text-coral-700' : 'text-neutral-500'
+                        prazo.urgente ? 'text-coral-700' : 'text-ink-muted'
                       }`}
                     >
                       {prazo.label}
@@ -216,7 +216,7 @@ export default function TodosPage() {
                   {/* Excluir */}
                   <button
                     onClick={() => excluir(todo.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-full text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-all"
+                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-full text-ink-faint hover:text-red-600 hover:bg-red-50 transition-all"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -239,17 +239,17 @@ export default function TodosPage() {
           />
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-label font-medium text-neutral-700">Prazo (opcional)</label>
+            <label className="text-label font-medium text-ink-muted">Prazo (opcional)</label>
             <input
               type="date"
-              className="w-full px-3.5 py-2.5 rounded-md border border-neutral-200 text-body-md text-neutral-900 outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600/20 transition-colors"
+              className="w-full px-3.5 py-2.5 rounded-md border border-line/[0.12] text-body-md text-ink outline-none focus:border-accent/45 focus:ring-1 focus:ring-accent/12 transition-colors"
               value={novoPrazo}
               onChange={(e) => setNovoPrazo(e.target.value)}
             />
           </div>
 
           <div className="flex flex-col gap-2">
-            <label className="text-label font-medium text-neutral-700">Prioridade</label>
+            <label className="text-label font-medium text-ink-muted">Prioridade</label>
             <div className="flex gap-2">
               {(['alta', 'media', 'baixa'] as Prioridade[]).map((p) => (
                 <button
@@ -257,8 +257,8 @@ export default function TodosPage() {
                   onClick={() => setNovaPrioridade(p)}
                   className={`flex-1 px-3 py-2 rounded-lg text-label font-semibold border transition-colors ${
                     novaPrioridade === p
-                      ? 'border-purple-600 bg-purple-50 text-purple-700'
-                      : 'border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300'
+                      ? 'border-accent bg-accent/[0.08] text-ink'
+                      : 'border-line/[0.12] bg-surface text-ink-muted hover:border-line/[0.14]'
                   }`}
                 >
                   {PRIORIDADE_LABEL[p]}

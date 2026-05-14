@@ -15,7 +15,7 @@ interface StatCardProps {
 }
 
 const toneClasses: Record<Tone, string> = {
-  lavender: 'bg-lavender-gradient border border-purple-500/15 dark:border-purple-500/25',
+  lavender: 'border border-line/[0.1] bg-line/[0.04]',
   lime: 'border border-green-500/20 bg-green-500/[0.06] dark:bg-green-500/[0.08]',
   cyan: 'border border-teal-500/20 bg-teal-500/[0.06] dark:bg-teal-500/[0.08]',
   sunset: 'border border-coral-500/20 bg-coral-500/[0.06] dark:bg-coral-500/[0.08]',

@@ -13,19 +13,19 @@ interface AIInsightCardProps {
 
 const toneClasses: Record<Tone, { wrap: string; iconBg: string; labelClass: string }> = {
   beet: {
-    wrap: 'border border-accent/22 bg-accent/[0.08]',
-    iconBg: 'bg-accent',
-    labelClass: 'text-accent-strong dark:text-pink-300',
+    wrap: 'border border-line/[0.12] bg-accent/[0.06]',
+    iconBg: 'bg-accent text-bg',
+    labelClass: 'text-ink-muted',
   },
   lavender: {
-    wrap: 'border border-purple-500/22 bg-purple-500/[0.06]',
-    iconBg: 'bg-purple-600',
-    labelClass: 'text-purple-800 dark:text-purple-300',
+    wrap: 'border border-line/[0.1] bg-surface-2',
+    iconBg: 'bg-ink text-bg',
+    labelClass: 'text-ink-muted',
   },
   sunset: {
-    wrap: 'border border-coral-500/22 bg-coral-500/[0.08]',
-    iconBg: 'bg-coral-600',
-    labelClass: 'text-coral-900 dark:text-coral-300',
+    wrap: 'border border-line/[0.14] bg-line/[0.04]',
+    iconBg: 'bg-surface-3 text-ink',
+    labelClass: 'text-ink-muted',
   },
 }
 
@@ -42,7 +42,7 @@ export default function AIInsightCard({
     <div className={`rounded-2xl p-5 ${t.wrap} ${className}`}>
       <div className="flex items-center gap-2 mb-3">
         <div className={`w-7 h-7 rounded-full ${t.iconBg} flex items-center justify-center shrink-0`}>
-          <Sparkles size={13} className="text-white" />
+          <Sparkles size={13} />
         </div>
         <span className={`text-[11px] font-bold uppercase tracking-[0.08em] ${t.labelClass}`}>
           {title}

@@ -100,7 +100,7 @@ export default function SlideCarousel({
           <button
             onClick={() => onChange(Math.max(0, current - 1))}
             disabled={current === 0}
-            className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md items-center justify-center text-neutral-700 disabled:opacity-0 disabled:cursor-default hover:bg-neutral-50 transition-all"
+            className="hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-surface shadow-md items-center justify-center text-ink-muted disabled:opacity-0 disabled:cursor-default hover:bg-line/[0.04] transition-all"
             aria-label="Slide anterior"
           >
             <ChevronLeft size={18} />
@@ -108,7 +108,7 @@ export default function SlideCarousel({
           <button
             onClick={() => onChange(Math.min(total - 1, current + 1))}
             disabled={current === total - 1}
-            className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white shadow-md items-center justify-center text-neutral-700 disabled:opacity-0 disabled:cursor-default hover:bg-neutral-50 transition-all"
+            className="hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-surface shadow-md items-center justify-center text-ink-muted disabled:opacity-0 disabled:cursor-default hover:bg-line/[0.04] transition-all"
             aria-label="Próximo slide"
           >
             <ChevronRight size={18} />
@@ -124,7 +124,7 @@ export default function SlideCarousel({
               key={i}
               onClick={() => onChange(i)}
               className={`h-1.5 rounded-full transition-all ${
-                i === current ? 'w-6 bg-purple-600' : 'w-1.5 bg-neutral-300 hover:bg-neutral-400'
+                i === current ? 'w-6 bg-accent' : 'w-1.5 bg-neutral-300 hover:bg-neutral-400'
               }`}
               aria-label={`Ir para slide ${i + 1}`}
             />

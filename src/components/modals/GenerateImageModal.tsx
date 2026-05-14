@@ -69,7 +69,7 @@ function PilotoThumb({ file, onRemove }: { file: File; onRemove: () => void }) {
   const url = useMemo(() => URL.createObjectURL(file), [file])
   useEffect(() => () => URL.revokeObjectURL(url), [url])
   return (
-    <div className="relative group rounded-lg border border-neutral-200 overflow-hidden bg-neutral-50 aspect-square w-20 shrink-0">
+    <div className="relative group rounded-lg border border-line/[0.12] overflow-hidden bg-line/[0.04] aspect-square w-20 shrink-0">
       <img src={url} alt="" className="w-full h-full object-cover" />
       <button
         type="button"
@@ -242,11 +242,11 @@ export default function GenerateImageModal({
       <div className="flex flex-col gap-4">
         {variant === 'full_slide' ? (
           <>
-            <div className="rounded-lg border border-purple-100 bg-purple-50/90 px-3 py-2.5 space-y-1.5">
-              <p className="text-body-sm font-semibold text-purple-950">
+            <div className="rounded-lg border border-line/[0.1] bg-accent/[0.08]/90 px-3 py-2.5 space-y-1.5">
+              <p className="text-body-sm font-semibold text-ink">
                 O que vai acontecer
               </p>
-              <p className="text-[12px] leading-snug text-purple-900">
+              <p className="text-[12px] leading-snug text-ink">
                 Ao clicar em <strong>Gerar variação de fundo</strong>, este modal fecha e o fluxo gera uma{' '}
                 <strong>nova opção de imagem</strong> para <strong>este mesmo slide</strong> — mesma tipografia,
                 cores de texto e diagramação; muda só a <strong>fotografia / ilustração / textura por detrás</strong>.
@@ -256,12 +256,12 @@ export default function GenerateImageModal({
             </div>
             <div>
               <div className="flex items-center justify-between mb-1 gap-2 flex-wrap">
-                <label className="text-label font-medium text-neutral-700">
+                <label className="text-label font-medium text-ink-muted">
                   Instruções só para o novo fundo
                 </label>
                 <div className="flex items-center gap-2">
                   {promptLoading && (
-                    <span className="flex items-center gap-1 text-[11px] text-neutral-500">
+                    <span className="flex items-center gap-1 text-[11px] text-ink-muted">
                       <Spinner size="sm" /> A gerar sugestão…
                     </span>
                   )}
@@ -269,14 +269,14 @@ export default function GenerateImageModal({
                     type="button"
                     onClick={() => void gerarPromptAutomatico()}
                     disabled={promptLoading || !fullSlideRef.current}
-                    className="text-[11px] font-semibold text-purple-600 hover:text-purple-800 flex items-center gap-1 disabled:opacity-40"
+                    className="text-[11px] font-semibold text-ink-muted hover:text-ink flex items-center gap-1 disabled:opacity-40"
                   >
                     <RefreshCw size={12} /> Regenerar sugestão
                   </button>
                 </div>
               </div>
               <textarea
-                className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-body-sm text-neutral-900 outline-none focus:border-purple-500 transition-colors resize-y min-h-[120px]"
+                className="w-full px-3 py-2 rounded-lg border border-line/[0.12] text-body-sm text-ink outline-none focus:border-accent/45 focus:ring-1 focus:ring-accent/12 transition-colors resize-y min-h-[120px]"
                 rows={5}
                 placeholder="Ex.: fundo mais escuro com textura subtly tech; manter headline onde está…"
                 value={promptCriativo}
@@ -292,27 +292,27 @@ export default function GenerateImageModal({
           </>
         ) : (
           <div>
-            <label className="text-label font-medium text-neutral-700 block mb-1">
+            <label className="text-label font-medium text-ink-muted block mb-1">
               Prompt de imagem
             </label>
             <textarea
-              className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-body-sm text-neutral-900 outline-none focus:border-purple-500 transition-colors resize-none"
+              className="w-full px-3 py-2 rounded-lg border border-line/[0.12] text-body-sm text-ink outline-none focus:border-accent/45 focus:ring-1 focus:ring-accent/12 transition-colors resize-none"
               rows={3}
               placeholder="Descreva a imagem que deseja gerar…"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
             />
-            <p className="text-[11px] text-neutral-400 mt-1">
+            <p className="text-[11px] text-ink-faint mt-1">
               Modo livre: fundos ou ilustrações; pode combinar com referências abaixo.
             </p>
           </div>
         )}
 
-        <div className="rounded-xl border border-neutral-200 bg-neutral-50/80 px-3 py-3">
+        <div className="rounded-xl border border-line/[0.12] bg-line/[0.04]/80 px-3 py-3">
           <div className="flex items-start justify-between gap-2 mb-2">
             <div>
-              <p className="text-label font-medium text-neutral-800">Referências visuais (opcional)</p>
-              <p className="text-[11px] text-neutral-500 mt-0.5">
+              <p className="text-label font-medium text-ink">Referências visuais (opcional)</p>
+              <p className="text-[11px] text-ink-muted mt-0.5">
                 Logo ou mood para o fundo — até {MAX_PILOTO_FILES} imagens. Descreva no texto como aplicar (ex. textura,
                 paleta).
               </p>
@@ -349,21 +349,21 @@ export default function GenerateImageModal({
               ))}
             </div>
           ) : (
-            <p className="text-body-sm text-neutral-400 italic">Nenhuma imagem anexada.</p>
+            <p className="text-body-sm text-ink-faint italic">Nenhuma imagem anexada.</p>
           )}
         </div>
 
         {variant === 'free_prompt' && loadingFree && (
-          <div className="flex items-center justify-center gap-3 py-8 bg-purple-50 rounded-xl border border-purple-100">
+          <div className="flex items-center justify-center gap-3 py-8 bg-accent/[0.08] rounded-xl border border-line/[0.1]">
             <Spinner size="md" />
-            <p className="text-body-md text-purple-700 font-medium">Gerando imagem…</p>
+            <p className="text-body-md text-ink font-medium">Gerando imagem…</p>
           </div>
         )}
 
         {variant === 'free_prompt' && preview && !loadingFree && (
           <div className="flex flex-col gap-2">
-            <p className="text-label font-semibold text-neutral-500">Preview</p>
-            <div className="w-full max-w-[280px] mx-auto aspect-[4/5] rounded-xl border border-neutral-100 overflow-hidden bg-neutral-100">
+            <p className="text-label font-semibold text-ink-muted">Preview</p>
+            <div className="w-full max-w-[280px] mx-auto aspect-[4/5] rounded-xl border border-line/[0.08] overflow-hidden bg-line/[0.06]">
               <img
                 src={preview}
                 alt="Imagem gerada"

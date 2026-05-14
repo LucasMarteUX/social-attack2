@@ -72,21 +72,21 @@ export default function RegenerateTextModal({ open, onClose, slideId: _, campo, 
 
         {/* Texto atual */}
         <div>
-          <p className="text-label font-semibold text-neutral-500 mb-1">Texto atual</p>
-          <p className="text-body-sm text-neutral-700 bg-neutral-50 p-3 rounded-lg leading-relaxed">{textoAtual || '(vazio)'}</p>
+          <p className="text-label font-semibold text-ink-muted mb-1">Texto atual</p>
+          <p className="text-body-sm text-ink-muted bg-line/[0.04] p-3 rounded-lg leading-relaxed">{textoAtual || '(vazio)'}</p>
         </div>
 
         {/* Contexto */}
         <div className="flex gap-2 flex-wrap">
-          <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-purple-50 text-purple-700">Tom: {tomNome || 'não definido'}</span>
-          <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-neutral-100 text-neutral-600">Slide: {slideType}</span>
+          <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-accent/[0.08] text-ink">Tom: {tomNome || 'não definido'}</span>
+          <span className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-line/[0.06] text-ink-muted">Slide: {slideType}</span>
         </div>
 
         {/* Instruções */}
         <div>
-          <label className="text-label font-medium text-neutral-700 block mb-1">Instruções adicionais (opcional)</label>
+          <label className="text-label font-medium text-ink-muted block mb-1">Instruções adicionais (opcional)</label>
           <textarea
-            className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-body-sm text-neutral-900 outline-none focus:border-purple-500 transition-colors resize-none"
+            className="w-full px-3 py-2 rounded-lg border border-line/[0.12] text-body-sm text-ink outline-none focus:border-accent/45 focus:ring-1 focus:ring-accent/12 transition-colors resize-none"
             rows={2}
             placeholder="Ex: seja mais direto, use dados, fique abaixo de 10 palavras…"
             value={instrucoes}
@@ -107,13 +107,13 @@ export default function RegenerateTextModal({ open, onClose, slideId: _, campo, 
         {/* Histórico */}
         {historico.length > 0 && (
           <div>
-            <p className="text-label font-semibold text-neutral-500 mb-2">Versões anteriores</p>
+            <p className="text-label font-semibold text-ink-muted mb-2">Versões anteriores</p>
             <div className="flex flex-col gap-1.5">
               {historico.map((h) => (
                 <button
                   key={h.id}
                   onClick={() => setPreview(h.new_value ?? '')}
-                  className="text-left text-body-sm text-neutral-600 bg-neutral-50 hover:bg-purple-50 hover:text-purple-800 p-2.5 rounded-lg border border-transparent hover:border-purple-100 transition-colors line-clamp-2"
+                  className="text-left text-body-sm text-ink-muted bg-line/[0.04] hover:bg-accent/[0.08] hover:text-ink p-2.5 rounded-lg border border-transparent hover:border-line/[0.1] transition-colors line-clamp-2"
                 >
                   {h.new_value}
                 </button>

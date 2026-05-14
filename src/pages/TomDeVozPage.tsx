@@ -61,8 +61,8 @@ export default function TomDeVozPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-display-md font-bold text-neutral-900 tracking-tight">Tom de Voz</h1>
-          <p className="text-body-md text-neutral-500 mt-1">
+          <h1 className="text-display-md font-bold text-ink tracking-tight">Tom de Voz</h1>
+          <p className="text-body-md text-ink-muted mt-1">
             {tons.length} {tons.length === 1 ? 'tom cadastrado' : 'tons cadastrados'} · usado nos seus criativos
           </p>
         </div>
@@ -103,11 +103,11 @@ export default function TomDeVozPage() {
             autoFocus
           />
           <div className="flex flex-col gap-1.5">
-            <label className="text-label font-medium text-neutral-700">
-              Descrição <span className="text-neutral-400 font-normal">(como esse tom se comporta)</span>
+            <label className="text-label font-medium text-ink-muted">
+              Descrição <span className="text-ink-faint font-normal">(como esse tom se comporta)</span>
             </label>
             <textarea
-              className="w-full px-3.5 py-2.5 rounded-md border border-neutral-200 text-body-md text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600/20 resize-none transition-colors"
+              className="w-full px-3.5 py-2.5 rounded-md border border-line/[0.12] text-body-md text-ink placeholder:text-ink-faint outline-none focus:border-accent/45 focus:ring-1 focus:ring-accent/12 resize-none transition-colors"
               rows={3}
               placeholder="Ex: Desafia crenças estabelecidas e faz perguntas diretas que incomodam."
               value={form.descricao}
@@ -116,11 +116,11 @@ export default function TomDeVozPage() {
             {erros.descricao && <p className="text-label text-red-600">{erros.descricao}</p>}
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-label font-medium text-neutral-700">
-              Frase de exemplo <span className="text-neutral-400 font-normal">(opcional)</span>
+            <label className="text-label font-medium text-ink-muted">
+              Frase de exemplo <span className="text-ink-faint font-normal">(opcional)</span>
             </label>
             <textarea
-              className="w-full px-3.5 py-2.5 rounded-md border border-neutral-200 text-body-md text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600/20 resize-none transition-colors"
+              className="w-full px-3.5 py-2.5 rounded-md border border-line/[0.12] text-body-md text-ink placeholder:text-ink-faint outline-none focus:border-accent/45 focus:ring-1 focus:ring-accent/12 resize-none transition-colors"
               rows={2}
               placeholder='Ex: "Por que todo mundo continua fazendo isso do jeito errado?"'
               value={form.exemplo}
@@ -136,9 +136,9 @@ export default function TomDeVozPage() {
 
       {/* Modal confirmar exclusão */}
       <Modal open={!!excluindo} onClose={() => setExcluindo(null)} title="Excluir tom de voz">
-        <p className="text-body-md text-neutral-600 mb-6">
+        <p className="text-body-md text-ink-muted mb-6">
           Tem certeza que deseja excluir{' '}
-          <strong className="text-neutral-900">"{excluindo?.nome}"</strong>?
+          <strong className="text-ink">"{excluindo?.nome}"</strong>?
         </p>
         <div className="flex gap-3 justify-end">
           <Button variant="ghost" onClick={() => setExcluindo(null)}>Cancelar</Button>
@@ -156,14 +156,14 @@ export default function TomDeVozPage() {
 
 function TomCard({ tom, onEdit, onDelete }: { tom: TomDeVoz; onEdit: () => void; onDelete: () => void }) {
   return (
-    <div className="group relative bg-white rounded-3xl border border-neutral-200 flex flex-col overflow-hidden">
-      <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-purple-100/60 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+    <div className="group relative bg-surface rounded-3xl border border-line/[0.12] flex flex-col overflow-hidden">
+      <div className="absolute -top-10 -right-10 w-28 h-28 rounded-full bg-line/[0.08]/60 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
       <div className="relative p-6 flex-1">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-4">
-          <div className="w-10 h-10 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center flex-shrink-0">
-            <Mic2 size={17} className="text-purple-700" />
+          <div className="w-10 h-10 rounded-2xl bg-accent/[0.08] border border-line/[0.1] flex items-center justify-center flex-shrink-0">
+            <Mic2 size={17} className="text-ink" />
           </div>
           <div
             className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -171,26 +171,26 @@ function TomCard({ tom, onEdit, onDelete }: { tom: TomDeVoz; onEdit: () => void;
           >
             <button
               onClick={onEdit}
-              className="p-1.5 rounded-full text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+              className="p-1.5 rounded-full text-ink-faint hover:text-ink-muted hover:bg-line/[0.06] transition-colors"
             >
               <Pencil size={14} />
             </button>
             <button
               onClick={onDelete}
-              className="p-1.5 rounded-full text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+              className="p-1.5 rounded-full text-ink-faint hover:text-red-600 hover:bg-red-50 transition-colors"
             >
               <Trash2 size={14} />
             </button>
           </div>
         </div>
 
-        <h3 className="text-heading-sm font-bold text-neutral-900 tracking-tight mb-1">{tom.nome}</h3>
-        <p className="text-body-sm text-neutral-500 leading-relaxed mb-4">{tom.descricao}</p>
+        <h3 className="text-heading-sm font-bold text-ink tracking-tight mb-1">{tom.nome}</h3>
+        <p className="text-body-sm text-ink-muted leading-relaxed mb-4">{tom.descricao}</p>
 
         {tom.exemplo && (
-          <div className="flex gap-2 p-3 rounded-xl bg-purple-50 border border-purple-100">
-            <Quote size={13} className="text-purple-400 flex-shrink-0 mt-0.5" />
-            <p className="text-body-sm text-purple-800 italic leading-relaxed">{tom.exemplo}</p>
+          <div className="flex gap-2 p-3 rounded-xl bg-accent/[0.08] border border-line/[0.1]">
+            <Quote size={13} className="text-ink-faint flex-shrink-0 mt-0.5" />
+            <p className="text-body-sm text-ink italic leading-relaxed">{tom.exemplo}</p>
           </div>
         )}
       </div>
@@ -201,11 +201,11 @@ function TomCard({ tom, onEdit, onDelete }: { tom: TomDeVoz; onEdit: () => void;
 function EmptyState({ onNew }: { onNew: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center mb-4">
-        <Mic2 size={28} className="text-purple-600" />
+      <div className="w-16 h-16 rounded-2xl bg-accent/[0.08] border border-line/[0.1] flex items-center justify-center mb-4">
+        <Mic2 size={28} className="text-ink-muted" />
       </div>
-      <h3 className="text-heading-sm font-semibold text-neutral-900 mb-2">Nenhum tom cadastrado</h3>
-      <p className="text-body-md text-neutral-500 mb-6 max-w-xs">
+      <h3 className="text-heading-sm font-semibold text-ink mb-2">Nenhum tom cadastrado</h3>
+      <p className="text-body-md text-ink-muted mb-6 max-w-xs">
         Crie seus tons de voz e selecione um ao gerar cada carrossel.
       </p>
       <Button onClick={onNew}>

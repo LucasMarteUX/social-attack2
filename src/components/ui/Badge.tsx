@@ -19,7 +19,7 @@ const variantClasses: Record<Variant, string> = {
   neutral:
     'border border-line/[0.12] bg-line/[0.06] text-ink-muted',
   lavender:
-    'border border-purple-500/25 bg-purple-500/[0.1] text-purple-900 dark:text-purple-300',
+    'border border-line/[0.14] bg-line/[0.06] text-ink-muted',
   cyan:
     'border border-teal-500/25 bg-teal-500/[0.12] text-teal-900 dark:text-teal-300',
 }
@@ -30,7 +30,7 @@ const dotColors: Record<Variant, string> = {
   alert: 'bg-coral-600 dark:bg-coral-400',
   critical: 'bg-red-600 dark:bg-red-400',
   neutral: 'bg-ink-faint',
-  lavender: 'bg-purple-600 dark:bg-purple-400',
+  lavender: 'bg-ink-muted dark:bg-ink-muted',
   cyan: 'bg-teal-600 dark:bg-teal-400',
 }
 

@@ -20,11 +20,11 @@ export default function IdeaCard({
   onCriarCarrossel,
 }: IdeaCardProps) {
   return (
-    <div className="group bg-white rounded-xl border border-black/[0.06] shadow-sm hover:shadow-md transition-all flex flex-col">
+    <div className="group bg-surface rounded-xl border border-line/[0.08] shadow-sm hover:shadow-md transition-all flex flex-col">
       <div className="p-5 flex-1">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-3">
-          <h3 className="text-body-lg font-semibold text-neutral-900 leading-snug flex-1">
+          <h3 className="text-body-lg font-semibold text-ink leading-snug flex-1">
             {ideia.titulo}
           </h3>
 
@@ -33,8 +33,8 @@ export default function IdeaCard({
               onClick={onToggleFavorita}
               className={`p-1.5 rounded-md transition-colors ${
                 ideia.favorita
-                  ? 'text-pink-600 bg-pink-50'
-                  : 'text-neutral-300 hover:text-pink-400 hover:bg-pink-50'
+                  ? 'text-ink bg-accent/[0.12]'
+                  : 'text-ink-faint hover:text-ink hover:bg-line/[0.06]'
               }`}
             >
               <Heart size={15} fill={ideia.favorita ? 'currentColor' : 'none'} />
@@ -45,13 +45,13 @@ export default function IdeaCard({
             >
               <button
                 onClick={onEdit}
-                className="p-1.5 rounded-md text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 transition-colors"
+                className="p-1.5 rounded-md text-ink-faint hover:text-ink-muted hover:bg-line/[0.06] transition-colors"
               >
                 <Pencil size={14} />
               </button>
               <button
                 onClick={onDelete}
-                className="p-1.5 rounded-md text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                className="p-1.5 rounded-md text-ink-faint hover:text-red-600 hover:bg-red-50 transition-colors"
               >
                 <Trash2 size={14} />
               </button>
@@ -61,7 +61,7 @@ export default function IdeaCard({
 
         {/* Descrição */}
         {ideia.descricao && (
-          <p className="text-body-sm text-neutral-500 leading-relaxed mb-3 line-clamp-2">
+          <p className="text-body-sm text-ink-muted leading-relaxed mb-3 line-clamp-2">
             {ideia.descricao}
           </p>
         )}
@@ -80,7 +80,7 @@ export default function IdeaCard({
         {ideia.referencias.length > 0 && (
           <div className="flex flex-col gap-1.5">
             {ideia.referencias.slice(0, 2).map((ref, i) => (
-              <div key={i} className="flex items-center gap-1.5 text-label text-neutral-400">
+              <div key={i} className="flex items-center gap-1.5 text-label text-ink-faint">
                 {ref.tipo === 'url' ? (
                   <Link size={11} className="flex-shrink-0" />
                 ) : (
@@ -90,7 +90,7 @@ export default function IdeaCard({
               </div>
             ))}
             {ideia.referencias.length > 2 && (
-              <span className="text-label text-neutral-400">
+              <span className="text-label text-ink-faint">
                 +{ideia.referencias.length - 2} referência(s)
               </span>
             )}
@@ -99,7 +99,7 @@ export default function IdeaCard({
       </div>
 
       {/* Footer — ação principal */}
-      <div className="px-5 py-3 border-t border-neutral-100">
+      <div className="px-5 py-3 border-t border-line/[0.08]">
         <button
           onClick={onCriarCarrossel}
           className="flex items-center gap-2 text-label font-semibold transition-colors hover:opacity-80"

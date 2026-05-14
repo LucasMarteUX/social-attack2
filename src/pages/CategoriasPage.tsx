@@ -40,8 +40,8 @@ export default function CategoriasPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-heading-xl font-bold text-neutral-900">Categorias</h1>
-          <p className="text-body-md text-neutral-500 mt-1">
+          <h1 className="text-heading-xl font-bold text-ink">Categorias</h1>
+          <p className="text-body-md text-ink-muted mt-1">
             Organize seus conteúdos por temas
           </p>
         </div>
@@ -87,11 +87,11 @@ export default function CategoriasPage() {
         onClose={() => setExcluindo(null)}
         title="Excluir categoria"
       >
-        <p className="text-body-md text-neutral-600 mb-6">
+        <p className="text-body-md text-ink-muted mb-6">
           Tem certeza que deseja excluir{' '}
-          <strong className="text-neutral-900">"{excluindo?.nome}"</strong>?
+          <strong className="text-ink">"{excluindo?.nome}"</strong>?
           <br />
-          <span className="text-label text-neutral-400 mt-1 block">
+          <span className="text-label text-ink-faint mt-1 block">
             As ideias e criativos vinculados não serão removidos.
           </span>
         </p>
@@ -117,13 +117,13 @@ export default function CategoriasPage() {
 function EmptyState({ onNew }: { onNew: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center mb-4">
-        <FolderOpen size={28} className="text-purple-600" />
+      <div className="w-16 h-16 rounded-2xl bg-accent/[0.08] flex items-center justify-center mb-4">
+        <FolderOpen size={28} className="text-ink-muted" />
       </div>
-      <h3 className="text-heading-sm font-semibold text-neutral-900 mb-2">
+      <h3 className="text-heading-sm font-semibold text-ink mb-2">
         Nenhuma categoria ainda
       </h3>
-      <p className="text-body-md text-neutral-500 mb-6 max-w-xs">
+      <p className="text-body-md text-ink-muted mb-6 max-w-xs">
         Crie sua primeira categoria para começar a organizar suas ideias e conteúdos.
       </p>
       <Button onClick={onNew}>

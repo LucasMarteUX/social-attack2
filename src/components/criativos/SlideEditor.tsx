@@ -42,18 +42,18 @@ export default function SlideEditor({ slides, onChange }: SlideEditorProps) {
     <div className="flex flex-col gap-4">
       {/* Seletor de modo */}
       <div className="flex items-center justify-between">
-        <span className="text-label text-neutral-500">
+        <span className="text-label text-ink-muted">
           {slides.length} slide{slides.length !== 1 ? 's' : ''}
         </span>
-        <div className="inline-flex p-0.5 rounded-full bg-neutral-100 border border-neutral-200">
+        <div className="inline-flex p-0.5 rounded-full bg-line/[0.06] border border-line/[0.12]">
           {(['individual', 'todos'] as Modo[]).map((m) => (
             <button
               key={m}
               onClick={() => handleModo(m)}
               className={`px-3.5 py-1 rounded-full text-label font-semibold transition-all ${
                 modo === m
-                  ? 'bg-white text-neutral-900 border border-neutral-200'
-                  : 'text-neutral-500 hover:text-neutral-700'
+                  ? 'bg-surface text-ink border border-line/[0.12]'
+                  : 'text-ink-muted hover:text-ink-muted'
               }`}
             >
               {m === 'individual' ? 'Individual' : 'Editar todos'}
@@ -71,31 +71,31 @@ export default function SlideEditor({ slides, onChange }: SlideEditorProps) {
           return (
             <div
               key={i}
-              className="rounded-2xl border border-neutral-200 bg-white overflow-hidden"
+              className="rounded-2xl border border-line/[0.12] bg-surface overflow-hidden"
             >
               {/* Header do slide */}
               <button
                 onClick={() => toggleSlide(i)}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-neutral-50 transition-colors"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-line/[0.04] transition-colors"
               >
-                <div className="w-7 h-7 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-[11px] font-bold text-purple-700">{slide.numero}</span>
+                <div className="w-7 h-7 rounded-full bg-line/[0.08] flex items-center justify-center flex-shrink-0">
+                  <span className="text-[11px] font-bold text-ink">{slide.numero}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-label font-semibold text-neutral-700">{label}</p>
+                  <p className="text-label font-semibold text-ink-muted">{label}</p>
                   {!expandido && (
-                    <p className="text-[11px] text-neutral-400 truncate mt-0.5 leading-snug">
+                    <p className="text-[11px] text-ink-faint truncate mt-0.5 leading-snug">
                       {slide.texto || 'Sem conteúdo ainda…'}
                     </p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {!expandido && (
-                    <Pencil size={13} className="text-neutral-400" />
+                    <Pencil size={13} className="text-ink-faint" />
                   )}
                   {expandido
-                    ? <ChevronUp size={15} className="text-neutral-400" />
-                    : <ChevronDown size={15} className="text-neutral-400" />
+                    ? <ChevronUp size={15} className="text-ink-faint" />
+                    : <ChevronDown size={15} className="text-ink-faint" />
                   }
                 </div>
               </button>
@@ -104,14 +104,14 @@ export default function SlideEditor({ slides, onChange }: SlideEditorProps) {
               {expandido && (
                 <div className="px-4 pb-4">
                   <textarea
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-neutral-200 text-body-md text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600/20 resize-none transition-colors bg-neutral-50"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-line/[0.12] text-body-md text-ink placeholder:text-ink-faint outline-none focus:border-accent/45 focus:ring-1 focus:ring-accent/12 resize-none transition-colors bg-line/[0.04]"
                     rows={4}
                     placeholder={`Texto do slide ${slide.numero}…`}
                     value={slide.texto}
                     onChange={(e) => onChange(i, e.target.value)}
                     autoFocus={modo === 'individual'}
                   />
-                  <p className="text-[11px] text-neutral-400 mt-1.5 text-right">
+                  <p className="text-[11px] text-ink-faint mt-1.5 text-right">
                     {slide.texto.length} caracteres
                   </p>
                 </div>

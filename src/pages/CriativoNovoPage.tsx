@@ -136,16 +136,16 @@ export default function CriativoNovoPage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl">
-      <div className="flex items-center gap-2 text-label text-neutral-400 mb-6">
-        <Link to="/criativos" className="hover:text-purple-700 transition-colors">Criativos</Link>
+      <div className="flex items-center gap-2 text-label text-ink-faint mb-6">
+        <Link to="/criativos" className="hover:text-ink transition-colors">Criativos</Link>
         <ChevronRight size={14} />
-        <span className="font-medium text-neutral-600">Novo criativo</span>
+        <span className="font-medium text-ink-muted">Novo criativo</span>
       </div>
 
-      <h1 className="text-heading-xl font-bold text-neutral-900 mb-2">
+      <h1 className="text-heading-xl font-bold text-ink mb-2">
         {ideia ? ideia.titulo : 'Novo criativo'}
       </h1>
-      <p className="text-body-md text-neutral-500 mb-8 flex items-center gap-2">
+      <p className="text-body-md text-ink-muted mb-8 flex items-center gap-2">
         <Instagram size={14} />
         Carrossel para Instagram · proporção 4:5 (1080×1350)
       </p>
@@ -159,15 +159,15 @@ export default function CriativoNovoPage() {
           return (
             <div key={label} className="flex items-center">
               <div className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold transition-colors ${done ? 'bg-purple-700 text-white' : active ? 'bg-purple-100 text-purple-700 ring-2 ring-purple-700' : 'bg-neutral-100 text-neutral-400'}`}>
+                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold transition-colors ${done ? 'bg-accent text-bg' : active ? 'bg-line/[0.08] text-ink ring-2 ring-accent' : 'bg-line/[0.06] text-ink-faint'}`}>
                   {done ? <Check size={13} /> : stepNum}
                 </div>
-                <span className={`text-label font-medium ${active ? 'text-purple-700' : done ? 'text-neutral-600' : 'text-neutral-400'}`}>
+                <span className={`text-label font-medium ${active ? 'text-ink' : done ? 'text-ink-muted' : 'text-ink-faint'}`}>
                   {label}
                 </span>
               </div>
               {i < STEPS.length - 1 && (
-                <div className={`w-10 h-px mx-3 ${step > stepNum ? 'bg-purple-700' : 'bg-neutral-200'}`} />
+                <div className={`w-10 h-px mx-3 ${step > stepNum ? 'bg-accent' : 'bg-line/[0.12]'}`} />
               )}
             </div>
           )
@@ -195,11 +195,11 @@ export default function CriativoNovoPage() {
         <div className="max-w-2xl">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
-              <div className="flex items-center gap-3 p-5 rounded-2xl bg-purple-50 border border-purple-100">
+              <div className="flex items-center gap-3 p-5 rounded-2xl bg-accent/[0.08] border border-line/[0.1]">
                 <Spinner size="md" />
                 <div>
-                  <p className="text-body-md font-semibold text-purple-700">Gemini está criando seu roteiro…</p>
-                  <p className="text-label text-purple-400 mt-0.5">
+                  <p className="text-body-md font-semibold text-ink">Gemini está criando seu roteiro…</p>
+                  <p className="text-label text-ink-faint mt-0.5">
                     {briefing?.referencias.some((r) => r.tipo === 'url')
                       ? 'Pesquisando referências e gerando conteúdo…'
                       : 'Isso leva alguns segundos'}
@@ -216,21 +216,21 @@ export default function CriativoNovoPage() {
 
               <div className="flex flex-col gap-3">
                 {script.slides.map((slide, i) => (
-                  <div key={i} className="flex items-start gap-3 p-4 rounded-xl border border-neutral-100 bg-white">
-                    <div className="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="text-[11px] font-bold text-purple-700">{slide.numero}</span>
+                  <div key={i} className="flex items-start gap-3 p-4 rounded-xl border border-line/[0.08] bg-surface">
+                    <div className="w-6 h-6 rounded-full bg-line/[0.08] flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="text-[11px] font-bold text-ink">{slide.numero}</span>
                     </div>
-                    <p className="text-body-md text-neutral-700 leading-relaxed whitespace-pre-line">{slide.texto}</p>
+                    <p className="text-body-md text-ink-muted leading-relaxed whitespace-pre-line">{slide.texto}</p>
                   </div>
                 ))}
               </div>
 
-              <div className="p-4 rounded-xl bg-neutral-50 border border-neutral-100">
-                <p className="text-label font-semibold text-neutral-500 mb-2">Legenda</p>
-                <p className="text-body-sm text-neutral-700 whitespace-pre-line leading-relaxed">{script.legenda}</p>
+              <div className="p-4 rounded-xl bg-line/[0.04] border border-line/[0.08]">
+                <p className="text-label font-semibold text-ink-muted mb-2">Legenda</p>
+                <p className="text-body-sm text-ink-muted whitespace-pre-line leading-relaxed">{script.legenda}</p>
                 <div className="flex flex-wrap gap-2 mt-3">
                   {script.hashtags.map((h) => (
-                    <span key={h} className="text-label text-purple-600 font-medium">{h}</span>
+                    <span key={h} className="text-label text-ink-muted font-medium">{h}</span>
                   ))}
                 </div>
               </div>
@@ -254,7 +254,7 @@ export default function CriativoNovoPage() {
         <div className="flex flex-col gap-8">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-8 items-start">
             <div>
-              <p className="text-label font-semibold text-neutral-500 mb-4 uppercase tracking-wide">Editar slides</p>
+              <p className="text-label font-semibold text-ink-muted mb-4 uppercase tracking-wide">Editar slides</p>
               <SlideEditor
                 slides={slides}
                 onChange={(i, texto) => {
@@ -265,8 +265,8 @@ export default function CriativoNovoPage() {
             </div>
             <div className="lg:sticky lg:top-6">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-label font-semibold text-neutral-500 uppercase tracking-wide">Preview do carrossel</p>
-                <span className="text-[11px] font-medium text-neutral-400">Arraste →</span>
+                <p className="text-label font-semibold text-ink-muted uppercase tracking-wide">Preview do carrossel</p>
+                <span className="text-[11px] font-medium text-ink-faint">Arraste →</span>
               </div>
               <SlideCarousel
                 current={slideAtivo}
@@ -285,12 +285,12 @@ export default function CriativoNovoPage() {
             </div>
           </div>
 
-          <div className="max-w-2xl p-5 rounded-2xl bg-neutral-50 border border-neutral-100">
-            <p className="text-label font-semibold text-neutral-500 mb-2 uppercase tracking-wide">Legenda gerada</p>
-            <p className="text-body-md text-neutral-700 whitespace-pre-line leading-relaxed">{script.legenda}</p>
+          <div className="max-w-2xl p-5 rounded-2xl bg-line/[0.04] border border-line/[0.08]">
+            <p className="text-label font-semibold text-ink-muted mb-2 uppercase tracking-wide">Legenda gerada</p>
+            <p className="text-body-md text-ink-muted whitespace-pre-line leading-relaxed">{script.legenda}</p>
             <div className="flex flex-wrap gap-2 mt-3">
               {script.hashtags.map((h) => (
-                <span key={h} className="text-label text-purple-600 font-medium">{h}</span>
+                <span key={h} className="text-label text-ink-muted font-medium">{h}</span>
               ))}
             </div>
           </div>

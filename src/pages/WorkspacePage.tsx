@@ -108,12 +108,11 @@ function MiniMapNodePreview({ x, y, width, height, id }: { x: number; y: number;
   const node = nodes.find((n) => n.id === id)
 
   if (node?.type === 'mainNode') {
-    // Node principal: fundo lavanda com barra roxa no topo
     const barH = Math.max(2, Math.round(height * 0.08))
     return (
       <>
-        <rect x={x} y={y} width={width} height={height} fill="#ede9fe" stroke="#6D28D9" strokeWidth={1} rx={3} />
-        <rect x={x} y={y} width={width} height={barH} fill="#6D28D9" rx={1} />
+        <rect x={x} y={y} width={width} height={height} fill="#1c1c1c" stroke="#fafafa" strokeOpacity={0.12} strokeWidth={1} rx={3} />
+        <rect x={x} y={y} width={width} height={barH} fill="#fafafa" fillOpacity={0.9} rx={1} />
       </>
     )
   }
@@ -865,14 +864,14 @@ export default function WorkspacePage() {
 
       {/* Barra de info para workspace existente */}
       {!isNew && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/95 backdrop-blur-sm rounded-xl border border-neutral-100 shadow-md px-4 py-2.5 flex items-center gap-3 min-w-0 max-w-md">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-surface/95 backdrop-blur-sm rounded-xl border border-line/[0.08] shadow-md px-4 py-2.5 flex items-center gap-3 min-w-0 max-w-md">
           <button
             onClick={() => navigate('/workspace')}
-            className="p-1 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors flex-shrink-0"
+            className="p-1 rounded-lg text-ink-faint hover:text-ink-muted hover:bg-line/[0.06] transition-colors flex-shrink-0"
           >
             <ArrowLeft size={15} />
           </button>
-          <p className="text-body-md font-semibold text-neutral-900 truncate flex-1 min-w-0">
+          <p className="text-body-md font-semibold text-ink truncate flex-1 min-w-0">
             {carouselInfo?.title ?? '…'}
           </p>
           {carouselInfo && (
@@ -880,7 +879,7 @@ export default function WorkspacePage() {
               <Badge variant={STATUS_VARIANTS[carouselInfo.status] ?? 'default'}>
                 {STATUS_LABELS[carouselInfo.status] ?? carouselInfo.status}
               </Badge>
-              <span className="text-[11px] text-neutral-400 flex-shrink-0">
+              <span className="text-[11px] text-ink-faint flex-shrink-0">
                 {carouselInfo.total_slides} slides
               </span>
             </>
@@ -890,9 +889,9 @@ export default function WorkspacePage() {
 
       {/* Loading de slides para workspace existente */}
       {!isNew && slidesLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-20">
+        <div className="absolute inset-0 flex items-center justify-center bg-bg/65 z-20">
           <Spinner size="lg" />
-          <p className="ml-3 text-body-md text-neutral-600">Carregando workspace…</p>
+          <p className="ml-3 text-body-md text-ink-muted">Carregando workspace…</p>
         </div>
       )}
 

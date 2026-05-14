@@ -23,9 +23,9 @@ const variantClasses: Record<Variant, string> = {
     'bg-transparent text-ink-muted hover:text-ink hover:bg-line/[0.06] disabled:opacity-40',
   destructive:
     'bg-red-600 text-white hover:bg-red-700 disabled:opacity-40',
-  // Acento pink — reservado para CTAs de IA
+  // Acento monocromático (contraste com bg — espelho dark/light)
   accent:
-    'bg-accent text-white hover:bg-accent-strong disabled:opacity-40',
+    'bg-accent text-bg hover:bg-accent-strong disabled:opacity-40',
 }
 
 const sizeClasses: Record<Size, string> = {

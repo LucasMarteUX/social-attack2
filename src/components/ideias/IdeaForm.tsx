@@ -62,9 +62,9 @@ export default function IdeaForm({ open, onClose, onSave, inicial }: IdeaFormPro
         />
 
         <div className="flex flex-col gap-1">
-          <label className="text-label font-medium text-neutral-700">Descrição (opcional)</label>
+          <label className="text-label font-medium text-ink-muted">Descrição (opcional)</label>
           <textarea
-            className="w-full px-3.5 py-2.5 rounded-md border border-neutral-200 text-body-md text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600/20 resize-none transition-colors"
+            className="w-full px-3.5 py-2.5 rounded-md border border-line/[0.12] text-body-md text-ink placeholder:text-ink-faint outline-none focus:border-accent/45 focus:ring-1 focus:ring-accent/12 resize-none transition-colors"
             rows={3}
             placeholder="Descreva o ângulo ou abordagem da ideia…"
             value={descricao}
@@ -74,15 +74,15 @@ export default function IdeaForm({ open, onClose, onSave, inicial }: IdeaFormPro
 
         {/* Referências */}
         <div className="flex flex-col gap-2">
-          <label className="text-label font-medium text-neutral-700">Referências</label>
+          <label className="text-label font-medium text-ink-muted">Referências</label>
 
           <div className="flex gap-2">
             <button
               onClick={() => setTipoRef('url')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-label font-medium border transition-colors ${
                 tipoRef === 'url'
-                  ? 'bg-purple-50 border-purple-600 text-purple-700'
-                  : 'bg-white border-neutral-200 text-neutral-500'
+                  ? 'bg-accent/[0.08] border-accent text-ink'
+                  : 'bg-surface border-line/[0.12] text-ink-muted'
               }`}
             >
               <Link size={12} /> URL
@@ -91,8 +91,8 @@ export default function IdeaForm({ open, onClose, onSave, inicial }: IdeaFormPro
               onClick={() => setTipoRef('texto')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-label font-medium border transition-colors ${
                 tipoRef === 'texto'
-                  ? 'bg-purple-50 border-purple-600 text-purple-700'
-                  : 'bg-white border-neutral-200 text-neutral-500'
+                  ? 'bg-accent/[0.08] border-accent text-ink'
+                  : 'bg-surface border-line/[0.12] text-ink-muted'
               }`}
             >
               <FileText size={12} /> Texto
@@ -101,7 +101,7 @@ export default function IdeaForm({ open, onClose, onSave, inicial }: IdeaFormPro
 
           <div className="flex gap-2">
             <input
-              className="flex-1 px-3.5 py-2.5 rounded-md border border-neutral-200 text-body-md text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-purple-600 transition-colors"
+              className="flex-1 px-3.5 py-2.5 rounded-md border border-line/[0.12] text-body-md text-ink placeholder:text-ink-faint outline-none focus:border-accent/45 transition-colors"
               placeholder={tipoRef === 'url' ? 'https://…' : 'Anotação, citação, contexto…'}
               value={novaRef}
               onChange={(e) => setNovaRef(e.target.value)}
@@ -117,17 +117,17 @@ export default function IdeaForm({ open, onClose, onSave, inicial }: IdeaFormPro
               {referencias.map((ref, i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-2 px-3 py-2 rounded-md bg-neutral-50 border border-neutral-100"
+                  className="flex items-center gap-2 px-3 py-2 rounded-md bg-line/[0.04] border border-line/[0.08]"
                 >
                   {ref.tipo === 'url' ? (
-                    <Link size={12} className="text-neutral-400 flex-shrink-0" />
+                    <Link size={12} className="text-ink-faint flex-shrink-0" />
                   ) : (
-                    <FileText size={12} className="text-neutral-400 flex-shrink-0" />
+                    <FileText size={12} className="text-ink-faint flex-shrink-0" />
                   )}
-                  <span className="text-label text-neutral-600 flex-1 truncate">{ref.valor}</span>
+                  <span className="text-label text-ink-muted flex-1 truncate">{ref.valor}</span>
                   <button
                     onClick={() => removeRef(i)}
-                    className="text-neutral-300 hover:text-red-500 transition-colors"
+                    className="text-ink-faint hover:text-red-500 transition-colors"
                   >
                     <X size={13} />
                   </button>

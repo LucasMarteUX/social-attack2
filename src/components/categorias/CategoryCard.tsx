@@ -20,7 +20,7 @@ export default function CategoryCard({
 }: CategoryCardProps) {
   return (
     <div
-      className="group relative rounded-3xl bg-white border border-neutral-100 shadow-card hover:shadow-lg transition-all cursor-pointer overflow-hidden"
+      className="group relative rounded-3xl bg-surface border border-line/[0.08] shadow-card hover:shadow-lg transition-all cursor-pointer overflow-hidden"
       onClick={onClick}
     >
       {/* Background decorativo */}
@@ -45,13 +45,13 @@ export default function CategoryCard({
           >
             <button
               onClick={onEdit}
-              className="p-1.5 rounded-full text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition-colors"
+              className="p-1.5 rounded-full text-ink-faint hover:text-ink-muted hover:bg-line/[0.06] transition-colors"
             >
               <Pencil size={14} />
             </button>
             <button
               onClick={onDelete}
-              className="p-1.5 rounded-full text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+              className="p-1.5 rounded-full text-ink-faint hover:text-red-600 hover:bg-red-50 transition-colors"
             >
               <Trash2 size={14} />
             </button>
@@ -60,11 +60,11 @@ export default function CategoryCard({
 
         {/* Nome e descrição */}
         <div className="mb-5">
-          <h3 className="text-heading-sm font-bold text-neutral-900 tracking-tight mb-1 line-clamp-1">
+          <h3 className="text-heading-sm font-bold text-ink tracking-tight mb-1 line-clamp-1">
             {categoria.nome}
           </h3>
           {categoria.descricao && (
-            <p className="text-label text-neutral-500 line-clamp-2 leading-relaxed">
+            <p className="text-label text-ink-muted line-clamp-2 leading-relaxed">
               {categoria.descricao}
             </p>
           )}
@@ -74,14 +74,14 @@ export default function CategoryCard({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1.5">
-              <Lightbulb size={14} className="text-neutral-400" />
-              <span className="text-label font-semibold text-neutral-700">{ideias}</span>
-              <span className="text-label text-neutral-400">ideias</span>
+              <Lightbulb size={14} className="text-ink-faint" />
+              <span className="text-label font-semibold text-ink-muted">{ideias}</span>
+              <span className="text-label text-ink-faint">ideias</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Palette size={14} className="text-neutral-400" />
-              <span className="text-label font-semibold text-neutral-700">{criativos}</span>
-              <span className="text-label text-neutral-400">criativos</span>
+              <Palette size={14} className="text-ink-faint" />
+              <span className="text-label font-semibold text-ink-muted">{criativos}</span>
+              <span className="text-label text-ink-faint">criativos</span>
             </div>
           </div>
 

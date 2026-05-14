@@ -31,7 +31,7 @@ function PilotoThumbCapa({ file, onRemove }: { file: File; onRemove: () => void 
   const url = useMemo(() => URL.createObjectURL(file), [file])
   useEffect(() => () => URL.revokeObjectURL(url), [url])
   return (
-    <div className="relative group rounded-lg border border-neutral-200 overflow-hidden bg-neutral-50 aspect-square w-16 shrink-0">
+    <div className="relative group rounded-lg border border-line/[0.12] overflow-hidden bg-line/[0.04] aspect-square w-16 shrink-0">
       <img src={url} alt="" className="w-full h-full object-cover" />
       <button
         type="button"
@@ -181,24 +181,24 @@ export default function MainNode({ data }: Props) {
   const generating = data.gerating ?? false
 
   return (
-    <div className="bg-white rounded-2xl border-2 border-purple-200 shadow-lg w-[380px]">
-      <Handle type="source" position={Position.Bottom} className="!bg-purple-500" />
+    <div className="bg-surface rounded-2xl border border-line/[0.12] shadow-none w-[380px]">
+      <Handle type="source" position={Position.Bottom} className="!bg-accent !border-0" />
 
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-neutral-100 bg-purple-50 rounded-t-2xl">
-        <div className="w-7 h-7 rounded-lg bg-purple-600 flex items-center justify-center flex-shrink-0">
-          <Sparkles size={14} className="text-white" />
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-line/[0.08] bg-surface-2 rounded-t-2xl">
+        <div className="w-7 h-7 rounded-lg bg-accent text-bg flex items-center justify-center shrink-0">
+          <Sparkles size={14} />
         </div>
         <div>
-          <p className="text-label font-bold text-purple-800">Node Principal</p>
-          <p className="text-[10px] text-purple-500">Configuração do carrossel</p>
+          <p className="text-label font-bold text-ink">Node Principal</p>
+          <p className="text-[10px] text-ink-muted">Configuração do carrossel</p>
         </div>
       </div>
 
       <div className="p-4 flex flex-col gap-4">
 
         {(erro || data.geracaoErro) && (
-          <p className="text-[11px] text-red-600 bg-red-50 p-2 rounded-lg">
+          <p className="text-[11px] text-red-600 bg-red-500/[0.08] border border-red-500/20 p-2 rounded-lg">
             {erro ?? data.geracaoErro}
           </p>
         )}
@@ -227,10 +227,10 @@ export default function MainNode({ data }: Props) {
         {/* Links de referência */}
         <Field label="Links de referência">
           {urls.map((url, i) => (
-            <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-purple-50 border border-purple-100 mb-1">
-              <Link2 size={11} className="text-purple-500 flex-shrink-0" />
-              <span className="text-[11px] text-purple-800 flex-1 truncate">{url}</span>
-              <button onClick={() => setUrls((p) => p.filter((_, idx) => idx !== i))} className="text-purple-400 hover:text-purple-700">
+            <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-line/[0.05] border border-line/[0.1] mb-1">
+              <Link2 size={11} className="text-ink-muted shrink-0" />
+              <span className="text-[11px] text-ink flex-1 truncate">{url}</span>
+              <button type="button" onClick={() => setUrls((p) => p.filter((_, idx) => idx !== i))} className="text-ink-faint hover:text-ink">
                 <X size={11} />
               </button>
             </div>
@@ -243,7 +243,7 @@ export default function MainNode({ data }: Props) {
               onChange={(e) => setUrlInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && adicionarUrl()}
             />
-            <button onClick={adicionarUrl} className="px-2 rounded-md bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors">
+            <button type="button" onClick={adicionarUrl} className="px-2 rounded-md bg-accent/[0.12] text-ink border border-line/[0.1] hover:bg-line/[0.08] transition-colors">
               <Plus size={13} />
             </button>
           </div>
@@ -288,18 +288,18 @@ export default function MainNode({ data }: Props) {
             max={20}
             value={totalSlides}
             onChange={(e) => setTotalSlides(Number(e.target.value))}
-            className="w-full accent-purple-600"
+            className="w-full accent-accent"
           />
-          <div className="flex justify-between text-[10px] text-neutral-400">
+          <div className="flex justify-between text-[10px] text-ink-faint">
             <span>3</span>
             <span>20</span>
           </div>
         </Field>
 
         {/* Capa — fundo (slide 1) */}
-        <div className="rounded-xl border border-purple-100 bg-purple-50/40 px-3 py-3 flex flex-col gap-2">
-          <p className="text-[11px] font-bold text-purple-900 uppercase tracking-wide">Capa — fundo (slide 1)</p>
-          <p className="text-[10px] text-purple-800/90 leading-snug">
+        <div className="rounded-xl border border-line/[0.1] bg-line/[0.03] px-3 py-3 flex flex-col gap-2">
+          <p className="text-[11px] font-bold text-ink uppercase tracking-wide">Capa — fundo (slide 1)</p>
+          <p className="text-[10px] text-ink-muted leading-snug">
             Prompt e imagens só para a <strong>capa</strong>. Os outros slides pode gerar depois em cada cartão com «Var. fundo».
           </p>
           <Field label="Prompt do fundo da capa">
@@ -313,14 +313,14 @@ export default function MainNode({ data }: Props) {
           </Field>
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide">
+              <span className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide">
                 Referências (opcional)
               </span>
               <button
                 type="button"
                 onClick={() => capaFileRef.current?.click()}
                 disabled={pilotoCapaFiles.length >= MAX_CAPA_REF}
-                className="flex items-center gap-1 px-2 py-1 rounded-md border border-purple-200 bg-white text-[11px] font-medium text-purple-700 hover:bg-purple-50 disabled:opacity-40 transition-colors"
+                className="flex items-center gap-1 px-2 py-1 rounded-md border border-line/[0.12] bg-surface text-[11px] font-medium text-ink hover:bg-line/[0.05] disabled:opacity-40 transition-colors"
               >
                 <ImagePlus size={12} /> Adicionar
               </button>
@@ -346,7 +346,7 @@ export default function MainNode({ data }: Props) {
                 ))}
               </div>
             ) : (
-              <p className="text-[10px] text-neutral-400 italic">Logo ou mood para o fundo da capa.</p>
+              <p className="text-[10px] text-ink-faint italic">Logo ou mood para o fundo da capa.</p>
             )}
           </div>
         </div>
@@ -355,11 +355,11 @@ export default function MainNode({ data }: Props) {
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <div
             onClick={() => setAutoGerarImagens((v) => !v)}
-            className={`w-8 h-4 rounded-full transition-colors flex-shrink-0 ${autoGerarImagens ? 'bg-purple-600' : 'bg-neutral-200'}`}
+            className={`w-8 h-4 rounded-full transition-colors shrink-0 ${autoGerarImagens ? 'bg-accent' : 'bg-line/[0.15]'}`}
           >
-            <div className={`w-3 h-3 bg-white rounded-full shadow mt-0.5 transition-transform ${autoGerarImagens ? 'translate-x-4' : 'translate-x-0.5'}`} />
+            <div className={`w-3 h-3 bg-bg rounded-full shadow-sm mt-0.5 transition-transform ${autoGerarImagens ? 'translate-x-4' : 'translate-x-0.5'}`} />
           </div>
-          <span className="text-[11px] text-neutral-600">Gerar imagens automaticamente</span>
+          <span className="text-[11px] text-ink-muted">Gerar imagens automaticamente</span>
         </label>
 
         <Button onClick={handleGerar} loading={generating} size="lg" className="w-full">
@@ -373,13 +373,14 @@ export default function MainNode({ data }: Props) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wide">{label}</label>
+      <label className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide">{label}</label>
       {children}
     </div>
   )
 }
 
-const inputCls = 'w-full px-2.5 py-1.5 rounded-md border border-neutral-200 text-[12px] text-neutral-900 outline-none focus:border-purple-500 transition-colors bg-white'
+const inputCls =
+  'w-full px-2.5 py-1.5 rounded-md border border-line/[0.12] text-[12px] text-ink outline-none focus:border-accent/45 focus:ring-1 focus:ring-accent/15 transition-colors bg-surface'
 
 // re-export para uso externo
 export type { NodeCarouselScript }

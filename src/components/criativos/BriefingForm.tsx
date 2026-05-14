@@ -98,8 +98,8 @@ export default function BriefingForm({ inicial, onSubmit, loading }: BriefingFor
       {/* Referências */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <label className="text-label font-medium text-neutral-700">
-            Referências <span className="text-neutral-400 font-normal">(opcional)</span>
+          <label className="text-label font-medium text-ink-muted">
+            Referências <span className="text-ink-faint font-normal">(opcional)</span>
           </label>
         </div>
 
@@ -109,17 +109,17 @@ export default function BriefingForm({ inicial, onSubmit, loading }: BriefingFor
             {referencias.map((ref, i) => (
               <div
                 key={i}
-                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-purple-50 border border-purple-100"
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-accent/[0.08] border border-line/[0.1]"
               >
                 {ref.tipo === 'url' ? (
-                  <Link2 size={13} className="text-purple-500 flex-shrink-0" />
+                  <Link2 size={13} className="text-ink-muted flex-shrink-0" />
                 ) : (
-                  <FileText size={13} className="text-purple-500 flex-shrink-0" />
+                  <FileText size={13} className="text-ink-muted flex-shrink-0" />
                 )}
-                <span className="text-body-sm text-purple-800 flex-1 truncate">{ref.valor}</span>
+                <span className="text-body-sm text-ink flex-1 truncate">{ref.valor}</span>
                 <button
                   onClick={() => removerReferencia(i)}
-                  className="text-purple-400 hover:text-purple-700 transition-colors flex-shrink-0"
+                  className="text-ink-faint hover:text-ink transition-colors flex-shrink-0"
                 >
                   <X size={13} />
                 </button>
@@ -133,7 +133,7 @@ export default function BriefingForm({ inicial, onSubmit, loading }: BriefingFor
           <div className="flex gap-2">
             <input
               type="url"
-              className="flex-1 px-3.5 py-2.5 rounded-md border border-neutral-200 text-body-md text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600/20 transition-colors"
+              className="flex-1 px-3.5 py-2.5 rounded-md border border-line/[0.12] text-body-md text-ink placeholder:text-ink-faint outline-none focus:border-accent/45 focus:ring-1 focus:ring-accent/12 transition-colors"
               placeholder="https://exemplo.com/artigo"
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
@@ -145,7 +145,7 @@ export default function BriefingForm({ inicial, onSubmit, loading }: BriefingFor
             </Button>
             <button
               onClick={() => { setShowUrlInput(false); setUrlInput('') }}
-              className="p-2 text-neutral-400 hover:text-neutral-600 transition-colors"
+              className="p-2 text-ink-faint hover:text-ink-muted transition-colors"
             >
               <X size={16} />
             </button>
@@ -157,14 +157,14 @@ export default function BriefingForm({ inicial, onSubmit, loading }: BriefingFor
           <div className="flex gap-2 flex-wrap">
             <button
               onClick={() => setShowUrlInput(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-neutral-200 text-label font-medium text-neutral-600 hover:border-purple-300 hover:text-purple-700 hover:bg-purple-50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-line/[0.12] text-label font-medium text-ink-muted hover:border-accent/35 hover:text-ink hover:bg-accent/[0.08] transition-colors"
             >
               <Link2 size={13} />
               Adicionar link
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-neutral-200 text-label font-medium text-neutral-600 hover:border-purple-300 hover:text-purple-700 hover:bg-purple-50 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-line/[0.12] text-label font-medium text-ink-muted hover:border-accent/35 hover:text-ink hover:bg-accent/[0.08] transition-colors"
             >
               <Upload size={13} />
               Fazer upload
@@ -180,16 +180,16 @@ export default function BriefingForm({ inicial, onSubmit, loading }: BriefingFor
           className="hidden"
           onChange={handleArquivo}
         />
-        <p className="text-[11px] text-neutral-400">Aceita PDF, Word (.doc, .docx) e texto (.txt)</p>
+        <p className="text-[11px] text-ink-faint">Aceita PDF, Word (.doc, .docx) e texto (.txt)</p>
       </div>
 
       {/* Tom de voz */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <label className="text-label font-medium text-neutral-700">Tom de voz</label>
+          <label className="text-label font-medium text-ink-muted">Tom de voz</label>
           <Link
             to="/tom-de-voz"
-            className="text-[11px] font-semibold text-purple-600 hover:text-purple-800 transition-colors flex items-center gap-1"
+            className="text-[11px] font-semibold text-ink-muted hover:text-ink transition-colors flex items-center gap-1"
           >
             <Plus size={11} />
             Gerenciar tons
@@ -197,11 +197,11 @@ export default function BriefingForm({ inicial, onSubmit, loading }: BriefingFor
         </div>
 
         {tons.length === 0 ? (
-          <div className="p-4 rounded-xl border border-neutral-200 text-center">
-            <p className="text-body-sm text-neutral-500 mb-2">Nenhum tom cadastrado.</p>
+          <div className="p-4 rounded-xl border border-line/[0.12] text-center">
+            <p className="text-body-sm text-ink-muted mb-2">Nenhum tom cadastrado.</p>
             <Link
               to="/tom-de-voz"
-              className="text-label font-semibold text-purple-700 hover:text-purple-800 transition-colors"
+              className="text-label font-semibold text-ink hover:text-ink transition-colors"
             >
               Criar primeiro tom →
             </Link>
@@ -215,18 +215,18 @@ export default function BriefingForm({ inicial, onSubmit, loading }: BriefingFor
                 onClick={() => setTomId(tom.id)}
                 className={`flex flex-col items-start gap-1.5 p-3 rounded-xl border text-left transition-colors ${
                   tomId === tom.id
-                    ? 'border-purple-600 bg-purple-50'
-                    : 'border-neutral-200 bg-white hover:border-neutral-300'
+                    ? 'border-accent bg-accent/[0.08]'
+                    : 'border-line/[0.12] bg-surface hover:border-line/[0.14]'
                 }`}
               >
                 <Mic2
                   size={15}
-                  className={tomId === tom.id ? 'text-purple-600' : 'text-neutral-400'}
+                  className={tomId === tom.id ? 'text-ink-muted' : 'text-ink-faint'}
                 />
-                <span className={`text-label font-semibold leading-tight ${tomId === tom.id ? 'text-purple-700' : 'text-neutral-700'}`}>
+                <span className={`text-label font-semibold leading-tight ${tomId === tom.id ? 'text-ink' : 'text-ink-muted'}`}>
                   {tom.nome}
                 </span>
-                <span className="text-[11px] text-neutral-400 leading-tight line-clamp-2">
+                <span className="text-[11px] text-ink-faint leading-tight line-clamp-2">
                   {tom.descricao}
                 </span>
               </button>
@@ -237,9 +237,9 @@ export default function BriefingForm({ inicial, onSubmit, loading }: BriefingFor
 
       {/* Quantidade de slides */}
       <div className="flex flex-col gap-2">
-        <label className="text-label font-medium text-neutral-700">
+        <label className="text-label font-medium text-ink-muted">
           Quantidade de slides:{' '}
-          <span className="text-purple-700 font-bold">{qtdSlides}</span>
+          <span className="text-ink font-bold">{qtdSlides}</span>
         </label>
         <input
           type="range"
@@ -247,9 +247,9 @@ export default function BriefingForm({ inicial, onSubmit, loading }: BriefingFor
           max={20}
           value={qtdSlides}
           onChange={(e) => setQtdSlides(Number(e.target.value))}
-          className="w-full accent-purple-600"
+          className="w-full accent-accent"
         />
-        <div className="flex justify-between text-[11px] text-neutral-400">
+        <div className="flex justify-between text-[11px] text-ink-faint">
           <span>3 slides</span>
           <span>20 slides</span>
         </div>

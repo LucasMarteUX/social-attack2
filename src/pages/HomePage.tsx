@@ -90,15 +90,15 @@ export default function HomePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-display-md font-bold text-neutral-900 tracking-tight leading-tight">
+          <h1 className="text-display-md font-bold text-ink tracking-tight leading-tight">
             {greeting()}, Lucas <span className="inline-block">👋</span>
           </h1>
-          <p className="text-body-md text-neutral-500 mt-1">
+          <p className="text-body-md text-ink-muted mt-1">
             {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })} · Vamos criar conteúdo hoje?
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="w-10 h-10 rounded-full bg-white border border-neutral-200 flex items-center justify-center text-neutral-500 hover:bg-neutral-50 transition-colors relative">
+          <button className="w-10 h-10 rounded-full bg-surface border border-line/[0.12] flex items-center justify-center text-ink-muted hover:bg-line/[0.04] transition-colors relative">
             <Bell size={17} />
             <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-coral-700" />
           </button>
@@ -111,24 +111,24 @@ export default function HomePage() {
 
       {/* Hero: Score + AI Insight */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-4 mb-6">
-        <div className="rounded-3xl bg-purple-50 border border-purple-100 p-7 flex flex-col justify-between min-h-[200px] relative overflow-hidden">
-          <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-purple-200/30 blur-3xl pointer-events-none" />
+        <div className="rounded-3xl bg-accent/[0.08] border border-line/[0.1] p-7 flex flex-col justify-between min-h-[200px] relative overflow-hidden">
+          <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-line/[0.08] blur-3xl pointer-events-none" />
           <div className="relative">
-            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-purple-800/70 mb-2">
+            <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink/70 mb-2">
               Net Production Score
             </p>
             <div className="flex items-baseline gap-2">
-              <span className="text-display-2xl font-bold text-neutral-900 tracking-tight leading-none">
+              <span className="text-display-2xl font-bold text-ink tracking-tight leading-none">
                 {score}
               </span>
-              <span className="text-display-md font-bold text-neutral-400 leading-none">/100</span>
+              <span className="text-display-md font-bold text-ink-faint leading-none">/100</span>
             </div>
             <div className="flex items-center gap-2 mt-3">
-              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-purple-100 text-purple-800 text-[11px] font-semibold">
+              <div className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-line/[0.08] text-ink text-[11px] font-semibold">
                 <TrendingUp size={12} />
                 {stats.criativosProntos} prontos
               </div>
-              <span className="text-label text-purple-900/60">
+              <span className="text-label text-ink/60">
                 de {totalCriativos} criativos
               </span>
             </div>
@@ -136,16 +136,16 @@ export default function HomePage() {
 
           <div className="relative grid grid-cols-3 gap-3 mt-6">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-purple-800/60">Ideias</p>
-              <p className="text-heading-md font-bold text-neutral-900 mt-0.5">{totalIdeias}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink/60">Ideias</p>
+              <p className="text-heading-md font-bold text-ink mt-0.5">{totalIdeias}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-purple-800/60">Criativos</p>
-              <p className="text-heading-md font-bold text-neutral-900 mt-0.5">{totalCriativos}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink/60">Criativos</p>
+              <p className="text-heading-md font-bold text-ink mt-0.5">{totalCriativos}</p>
             </div>
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-purple-800/60">Agendados</p>
-              <p className="text-heading-md font-bold text-neutral-900 mt-0.5">{stats.agendadosSemana}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-ink/60">Agendados</p>
+              <p className="text-heading-md font-bold text-ink mt-0.5">{stats.agendadosSemana}</p>
             </div>
           </div>
         </div>
@@ -156,7 +156,7 @@ export default function HomePage() {
           <div className="mt-4">
             <button
               onClick={() => navigate('/categorias')}
-              className="inline-flex items-center gap-1 text-label font-semibold text-purple-700 hover:text-purple-800 transition-colors"
+              className="inline-flex items-center gap-1 text-label font-semibold text-ink hover:text-ink transition-colors"
             >
               <Sparkles size={13} />
               Gerar com Claude
@@ -202,7 +202,7 @@ export default function HomePage() {
 
       {/* Performance + Próximas publicações */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-6 mb-10">
-        <div className="rounded-3xl bg-white border border-neutral-200 p-6">
+        <div className="rounded-3xl bg-surface border border-line/[0.12] p-6">
           <SectionHeader title="Status dos criativos" subtitle="Distribuição por etapa" />
           <div className="flex items-center gap-6 mt-4">
             <DonutChart
@@ -211,22 +211,22 @@ export default function HomePage() {
               thickness={26}
               centerLabel={
                 <div className="text-center">
-                  <p className="text-heading-lg font-bold text-neutral-900 leading-none">{totalCriativos}</p>
-                  <p className="text-[10px] font-medium text-neutral-500 uppercase tracking-wider mt-1">Total</p>
+                  <p className="text-heading-lg font-bold text-ink leading-none">{totalCriativos}</p>
+                  <p className="text-[10px] font-medium text-ink-muted uppercase tracking-wider mt-1">Total</p>
                 </div>
               }
             />
             <div className="flex flex-col gap-2 flex-1">
               {statusSegments.length === 0 ? (
-                <p className="text-label text-neutral-400">Nenhum criativo ainda</p>
+                <p className="text-label text-ink-faint">Nenhum criativo ainda</p>
               ) : (
                 statusSegments.map((s) => (
                   <div key={s.label} className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: s.color }} />
-                      <span className="text-label text-neutral-600">{s.label}</span>
+                      <span className="text-label text-ink-muted">{s.label}</span>
                     </div>
-                    <span className="text-label font-bold text-neutral-900">{s.value}</span>
+                    <span className="text-label font-bold text-ink">{s.value}</span>
                   </div>
                 ))
               )}
@@ -234,14 +234,14 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="rounded-3xl bg-white border border-neutral-200 p-6">
+        <div className="rounded-3xl bg-surface border border-line/[0.12] p-6">
           <SectionHeader
             title="Próximas publicações"
             subtitle="Agendadas no seu calendário"
             action={
               <button
                 onClick={() => navigate('/agenda')}
-                className="text-label font-semibold text-purple-700 hover:text-purple-800 transition-colors flex items-center gap-1"
+                className="text-label font-semibold text-ink hover:text-ink transition-colors flex items-center gap-1"
               >
                 Ver agenda <ChevronRight size={13} />
               </button>
@@ -249,7 +249,7 @@ export default function HomePage() {
           />
 
           {proximasPublicacoes.length === 0 ? (
-            <p className="text-body-md text-neutral-400 py-6 text-center">
+            <p className="text-body-md text-ink-faint py-6 text-center">
               Nada agendado por enquanto.
             </p>
           ) : (
@@ -260,29 +260,29 @@ export default function HomePage() {
                   <div
                     key={agendamento.id}
                     onClick={() => criativo && navigate(`/criativos/${criativo.id}`)}
-                    className="flex items-center gap-4 p-3 rounded-2xl hover:bg-neutral-50 cursor-pointer transition-colors"
+                    className="flex items-center gap-4 p-3 rounded-2xl hover:bg-line/[0.04] cursor-pointer transition-colors"
                   >
-                    <div className="flex flex-col items-center justify-center w-12 h-14 rounded-xl bg-neutral-50 border border-neutral-100 flex-shrink-0">
-                      <span className="text-[10px] font-bold uppercase text-neutral-400">
+                    <div className="flex flex-col items-center justify-center w-12 h-14 rounded-xl bg-line/[0.04] border border-line/[0.08] flex-shrink-0">
+                      <span className="text-[10px] font-bold uppercase text-ink-faint">
                         {data.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}
                       </span>
-                      <span className="text-heading-sm font-bold text-neutral-900 leading-none">
+                      <span className="text-heading-sm font-bold text-ink leading-none">
                         {data.getDate()}
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-body-md font-semibold text-neutral-900 truncate">
+                      <p className="text-body-md font-semibold text-ink truncate">
                         {criativo?.titulo ?? 'Criativo'}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
                         {categoria && (
                           <div className="flex items-center gap-1.5">
                             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: categoria.cor }} />
-                            <span className="text-label text-neutral-500">{categoria.nome}</span>
+                            <span className="text-label text-ink-muted">{categoria.nome}</span>
                           </div>
                         )}
-                        <span className="text-neutral-300">·</span>
-                        <span className="text-label text-neutral-500">
+                        <span className="text-ink-faint">·</span>
+                        <span className="text-label text-ink-muted">
                           {data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
@@ -297,14 +297,14 @@ export default function HomePage() {
       </div>
 
       {/* Tarefas */}
-      <div className="rounded-3xl bg-white border border-neutral-200 p-6">
+      <div className="rounded-3xl bg-surface border border-line/[0.12] p-6">
         <SectionHeader
           title="Tarefas para hoje"
           subtitle={`${stats.todosPendentes} pendente${stats.todosPendentes === 1 ? '' : 's'}`}
           action={
             <button
               onClick={() => navigate('/todos')}
-              className="text-label font-semibold text-purple-700 hover:text-purple-800 transition-colors flex items-center gap-1"
+              className="text-label font-semibold text-ink hover:text-ink transition-colors flex items-center gap-1"
             >
               Ver todas <ChevronRight size={13} />
             </button>
@@ -312,7 +312,7 @@ export default function HomePage() {
         />
 
         {top3Todos.length === 0 ? (
-          <p className="text-body-md text-neutral-400 py-4 text-center">Nenhuma tarefa pendente.</p>
+          <p className="text-body-md text-ink-faint py-4 text-center">Nenhuma tarefa pendente.</p>
         ) : (
           <div className="flex flex-col gap-2 mt-3">
             {top3Todos.map((todo) => {
@@ -327,13 +327,13 @@ export default function HomePage() {
               return (
                 <div
                   key={todo.id}
-                  className="flex items-center gap-4 p-3 rounded-2xl hover:bg-neutral-50 transition-colors"
+                  className="flex items-center gap-4 p-3 rounded-2xl hover:bg-line/[0.04] transition-colors"
                 >
-                  <div className="w-5 h-5 rounded-full border-2 border-neutral-200 flex-shrink-0" />
-                  <p className="flex-1 text-body-md font-medium text-neutral-800">{todo.titulo}</p>
+                  <div className="w-5 h-5 rounded-full border-2 border-line/[0.12] flex-shrink-0" />
+                  <p className="flex-1 text-body-md font-medium text-ink">{todo.titulo}</p>
                   {diffDias !== null && (
                     <span
-                      className={`text-label ${diffDias <= 1 ? 'text-coral-700 font-semibold' : 'text-neutral-500'}`}
+                      className={`text-label ${diffDias <= 1 ? 'text-coral-700 font-semibold' : 'text-ink-muted'}`}
                     >
                       {diffDias === 0 ? 'hoje' : diffDias === 1 ? 'amanhã' : `em ${diffDias} dias`}
                     </span>

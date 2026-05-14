@@ -39,7 +39,7 @@ const SLIDE_TYPE_LABEL: Record<string, string> = { cover: 'Capa', body: 'Corpo',
 const SCALE = 0.38
 
 function phCls(val: string | null | undefined) {
-  return val === PLACEHOLDER_TEXTO_SLIDE_GERANDO ? ' italic text-neutral-400' : ''
+  return val === PLACEHOLDER_TEXTO_SLIDE_GERANDO ? ' italic text-ink-faint' : ''
 }
 
 function px(size: number) {
@@ -97,21 +97,21 @@ export default function SlideNode({ data }: Props) {
   const isEdited = slide.is_text_edited || slide.is_image_edited
 
   return (
-    <div className="bg-white rounded-2xl border border-neutral-200 shadow-md w-[300px]">
-      <Handle type="target" position={Position.Top} className="!bg-neutral-400" />
-      <Handle type="source" position={Position.Bottom} className="!bg-neutral-400" />
+    <div className="bg-surface rounded-2xl border border-line/[0.12] shadow-none w-[300px]">
+      <Handle type="target" position={Position.Top} className="!bg-ink-faint" />
+      <Handle type="source" position={Position.Bottom} className="!bg-ink-faint" />
 
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-neutral-100">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-line/[0.08]">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-bold text-white" style={{ backgroundColor: s.primaryColor }}>
             {slide.slide_number}
           </div>
-          <span className="text-label font-semibold text-neutral-700">{SLIDE_TYPE_LABEL[slide.slide_type] ?? slide.slide_type}</span>
+          <span className="text-label font-semibold text-ink-muted">{SLIDE_TYPE_LABEL[slide.slide_type] ?? slide.slide_type}</span>
         </div>
         <div className="flex items-center gap-1.5">
           {isEdited && <Badge variant="alert">Editado</Badge>}
-          <button onClick={() => onResetarTexto(slide.id)} title="Reset para original" className="p-1 rounded text-neutral-400 hover:text-purple-700 hover:bg-purple-50 transition-colors">
+          <button type="button" onClick={() => onResetarTexto(slide.id)} title="Reset para original" className="p-1 rounded text-ink-faint hover:text-ink hover:bg-line/[0.06] transition-colors">
             <RotateCcw size={12} />
           </button>
         </div>
@@ -157,7 +157,7 @@ export default function SlideNode({ data }: Props) {
             </button>
           )}
           {imageGenerating && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/60">
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-bg/55 backdrop-blur-[2px]">
               <Spinner size="sm" />
             </div>
           )}
@@ -231,28 +231,28 @@ export default function SlideNode({ data }: Props) {
 
         {/* Arte */}
         <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">Arte do slide</span>
+          <span className="text-[10px] font-semibold text-ink-faint uppercase tracking-wide">Arte do slide</span>
           <div className="flex gap-1.5">
             <button
               type="button"
               title="Gera nova opção de fundo — mantém texto e diagramação; escolha na lista em baixo"
               onClick={() => onAbrirGerarImagem(slide.id)}
-              className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md border border-purple-200 text-[11px] font-medium text-purple-700 hover:bg-purple-50 transition-colors"
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md border border-line/[0.14] text-[11px] font-medium text-ink hover:bg-line/[0.05] transition-colors"
             >
               <Wand2 size={11} /> Var. fundo
             </button>
-            <label className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md border border-neutral-200 text-[11px] font-medium text-neutral-600 hover:bg-neutral-50 transition-colors cursor-pointer">
+            <label className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-md border border-line/[0.12] text-[11px] font-medium text-ink-muted hover:bg-line/[0.04] transition-colors cursor-pointer">
               <Upload size={11} /> Upload
               <input type="file" accept="image/*" className="hidden" onChange={handleUpload} />
             </label>
             {slide.image_url && (
-              <button onClick={() => onRemoverImagem(slide.id)} className="p-1.5 rounded-md border border-red-100 text-red-500 hover:bg-red-50 transition-colors">
+              <button type="button" onClick={() => onRemoverImagem(slide.id)} className="p-1.5 rounded-md border border-red-500/25 text-red-500 hover:bg-red-500/[0.08] transition-colors">
                 <Trash2 size={11} />
               </button>
             )}
           </div>
           {slide.image_url && (
-            <div className="flex items-center gap-1.5 text-[10px] text-neutral-400">
+            <div className="flex items-center gap-1.5 text-[10px] text-ink-faint">
               <Image size={10} />
               <span>
                 {slide.image_source === 'generated'
@@ -264,32 +264,32 @@ export default function SlideNode({ data }: Props) {
             </div>
           )}
           {pendingImageVariants.length > 0 && (
-            <div className="rounded-lg border border-purple-100 bg-purple-50/50 px-2 py-2 mt-1">
-              <p className="text-[10px] font-semibold text-purple-900 uppercase tracking-wide">
+            <div className="rounded-lg border border-line/[0.1] bg-line/[0.03] px-2 py-2 mt-1">
+              <p className="text-[10px] font-semibold text-ink uppercase tracking-wide">
                 Opções de fundo (mesmo layout)
               </p>
-              <p className="text-[10px] text-purple-800/90 leading-snug mt-0.5 mb-1.5">
+              <p className="text-[10px] text-ink-muted leading-snug mt-0.5 mb-1.5">
                 Nova arte só atrás do texto. Clique em <strong>Usar</strong> para tornar ativa ou ✕ para descartar.
                 A imagem atual do preview principal não é removida até você usar uma opção.
               </p>
               <div className="flex gap-2 overflow-x-auto pb-0.5">
                 {pendingImageVariants.map((v) => (
                   <div key={v.id} className="flex flex-col gap-1 shrink-0 w-[76px]">
-                    <div className="relative rounded-md border border-purple-200 overflow-hidden aspect-[4/5] bg-white shadow-sm">
+                    <div className="relative rounded-md border border-line/[0.12] overflow-hidden aspect-[4/5] bg-surface-2 shadow-none">
                       <img src={v.url} alt="" className="w-full h-full object-cover" />
                     </div>
                     <div className="flex gap-0.5">
                       <button
                         type="button"
                         onClick={() => void onUsarVarianteImagem?.(slide.id, v)}
-                        className="flex-1 py-0.5 rounded text-[9px] font-semibold bg-purple-700 text-white hover:bg-purple-800 transition-colors"
+                        className="flex-1 py-0.5 rounded text-[9px] font-semibold bg-accent text-bg hover:opacity-90 transition-colors"
                       >
                         Usar
                       </button>
                       <button
                         type="button"
                         onClick={() => onDescartarVarianteImagem?.(slide.id, v.id)}
-                        className="px-1.5 py-0.5 rounded text-[9px] font-medium border border-neutral-200 bg-white text-neutral-600 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-colors"
+                        className="px-1.5 py-0.5 rounded text-[9px] font-medium border border-line/[0.12] bg-surface text-ink-muted hover:bg-red-500/[0.08] hover:border-red-500/30 hover:text-red-500 transition-colors"
                         aria-label="Descartar variação"
                       >
                         ✕
@@ -303,12 +303,12 @@ export default function SlideNode({ data }: Props) {
         </div>
 
         {/* Navegação */}
-        <div className="flex items-center justify-between pt-1 border-t border-neutral-100">
-          <button onClick={() => onNavegar(slide.slide_number - 1)} disabled={slide.slide_number <= 1} className="p-1 rounded text-neutral-400 hover:text-neutral-700 disabled:opacity-30 transition-colors">
+        <div className="flex items-center justify-between pt-1 border-t border-line/[0.06]">
+          <button type="button" onClick={() => onNavegar(slide.slide_number - 1)} disabled={slide.slide_number <= 1} className="p-1 rounded text-ink-faint hover:text-ink disabled:opacity-30 transition-colors">
             <ChevronLeft size={14} />
           </button>
-          <span className="text-[10px] text-neutral-400 font-medium">Slide {slide.slide_number} de {totalSlides}</span>
-          <button onClick={() => onNavegar(slide.slide_number + 1)} disabled={slide.slide_number >= totalSlides} className="p-1 rounded text-neutral-400 hover:text-neutral-700 disabled:opacity-30 transition-colors">
+          <span className="text-[10px] text-ink-faint font-medium">Slide {slide.slide_number} de {totalSlides}</span>
+          <button type="button" onClick={() => onNavegar(slide.slide_number + 1)} disabled={slide.slide_number >= totalSlides} className="p-1 rounded text-ink-faint hover:text-ink disabled:opacity-30 transition-colors">
             <ChevronRight size={14} />
           </button>
         </div>
@@ -336,20 +336,20 @@ function CampoTexto({ label, campo, valor, editando, valorTemp, multiline, onIni
   return (
     <div className="flex flex-col gap-0.5">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wide">{label}</span>
-        <button onClick={onRegenerar} className="text-[10px] text-purple-500 hover:text-purple-700 flex items-center gap-0.5 transition-colors">
+        <span className="text-[10px] font-semibold text-ink-faint uppercase tracking-wide">{label}</span>
+        <button type="button" onClick={onRegenerar} className="text-[10px] text-ink-muted hover:text-ink flex items-center gap-0.5 transition-colors">
           <Wand2 size={10} /> Regenerar
         </button>
       </div>
       {ativo ? (
         multiline ? (
-          <textarea autoFocus value={valorTemp} onChange={(e) => onChange(e.target.value)} onBlur={onSalvar} rows={3} className="w-full px-2 py-1.5 rounded border border-purple-400 text-[11px] text-neutral-900 outline-none resize-none focus:ring-1 focus:ring-purple-300" />
+          <textarea autoFocus value={valorTemp} onChange={(e) => onChange(e.target.value)} onBlur={onSalvar} rows={3} className="w-full px-2 py-1.5 rounded border border-line/[0.2] text-[11px] text-ink bg-surface outline-none resize-none focus:ring-1 focus:ring-accent/25" />
         ) : (
-          <input autoFocus value={valorTemp} onChange={(e) => onChange(e.target.value)} onBlur={onSalvar} onKeyDown={(e) => e.key === 'Enter' && onSalvar()} className="w-full px-2 py-1.5 rounded border border-purple-400 text-[11px] text-neutral-900 outline-none focus:ring-1 focus:ring-purple-300" />
+          <input autoFocus value={valorTemp} onChange={(e) => onChange(e.target.value)} onBlur={onSalvar} onKeyDown={(e) => e.key === 'Enter' && onSalvar()} className="w-full px-2 py-1.5 rounded border border-line/[0.2] text-[11px] text-ink bg-surface outline-none focus:ring-1 focus:ring-accent/25" />
         )
       ) : (
-        <p onClick={() => onIniciar(campo, valor ?? '')} className={`text-[11px] leading-relaxed px-2 py-1.5 rounded border border-transparent hover:border-neutral-200 hover:bg-neutral-50 cursor-text transition-colors min-h-[28px] ${valorEhPlaceholder ? 'text-neutral-400 italic' : 'text-neutral-700'}`}>
-          {valor || <span className="text-neutral-300 italic">Clique para editar</span>}
+        <p onClick={() => onIniciar(campo, valor ?? '')} className={`text-[11px] leading-relaxed px-2 py-1.5 rounded border border-transparent hover:border-line/[0.12] hover:bg-line/[0.04] cursor-text transition-colors min-h-[28px] ${valorEhPlaceholder ? 'text-ink-faint italic' : 'text-ink'}`}>
+          {valor || <span className="text-ink-faint italic">Clique para editar</span>}
         </p>
       )}
     </div>

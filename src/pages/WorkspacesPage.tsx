@@ -128,8 +128,8 @@ export default function WorkspacesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-heading-xl font-bold text-neutral-900">Workspaces</h1>
-          <p className="text-body-md text-neutral-500 mt-1">
+          <h1 className="text-heading-xl font-bold text-ink">Workspaces</h1>
+          <p className="text-body-md text-ink-muted mt-1">
             {loading ? '…' : `${carousels.length} ${carousels.length === 1 ? 'workspace' : 'workspaces'} criados`}
           </p>
         </div>
@@ -181,35 +181,35 @@ export default function WorkspacesPage() {
       {/* Modal agendar */}
       <Modal open={!!agendando} onClose={() => setAgendando(null)} title="Enviar para a Agenda">
         <div className="flex flex-col gap-4">
-          <p className="text-[13px] text-neutral-500">
-            Agendando: <strong className="text-neutral-800">{agendando?.title}</strong>
+          <p className="text-[13px] text-ink-muted">
+            Agendando: <strong className="text-ink">{agendando?.title}</strong>
           </p>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Data *</label>
+              <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Data *</label>
               <input
                 type="date"
                 value={agData}
                 onChange={(e) => setAgData(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all"
+                className="px-3 py-2 rounded-xl border border-line/[0.12] text-sm text-ink outline-none focus:border-accent/45 focus:ring-2 focus:ring-accent/12 transition-all"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Horário</label>
+              <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Horário</label>
               <input
                 type="time"
                 value={agHora}
                 onChange={(e) => setAgHora(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all"
+                className="px-3 py-2 rounded-xl border border-line/[0.12] text-sm text-ink outline-none focus:border-accent/45 focus:ring-2 focus:ring-accent/12 transition-all"
               />
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Plataforma</label>
+            <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Plataforma</label>
             <select
               value={agPlataforma}
               onChange={(e) => setAgPlataforma(e.target.value as typeof agPlataforma)}
-              className="px-3 py-2 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all bg-white"
+              className="px-3 py-2 rounded-xl border border-line/[0.12] text-sm text-ink outline-none focus:border-accent/45 focus:ring-2 focus:ring-accent/12 transition-all bg-surface"
             >
               <option value="instagram">Instagram</option>
               <option value="linkedin">LinkedIn</option>
@@ -217,13 +217,13 @@ export default function WorkspacesPage() {
             </select>
           </div>
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Notas (opcional)</label>
+            <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Notas (opcional)</label>
             <textarea
               value={agNotas}
               onChange={(e) => setAgNotas(e.target.value)}
               rows={2}
               placeholder="Observações sobre a postagem..."
-              className="px-3 py-2 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all resize-none"
+              className="px-3 py-2 rounded-xl border border-line/[0.12] text-sm text-ink outline-none focus:border-accent/45 focus:ring-2 focus:ring-accent/12 transition-all resize-none"
             />
           </div>
           <div className="flex gap-3 justify-end">
@@ -237,9 +237,9 @@ export default function WorkspacesPage() {
 
       {/* Modal excluir */}
       <Modal open={!!excluindo} onClose={() => setExcluindo(null)} title="Excluir workspace">
-        <p className="text-body-md text-neutral-600 mb-6">
+        <p className="text-body-md text-ink-muted mb-6">
           Tem certeza que deseja excluir{' '}
-          <strong className="text-neutral-900">"{excluindo?.title}"</strong>?
+          <strong className="text-ink">"{excluindo?.title}"</strong>?
           Todos os slides serão removidos permanentemente.
         </p>
         <div className="flex gap-3 justify-end">
@@ -270,7 +270,7 @@ function WorkspaceCard({ carousel, duplicating, onOpen, onEdit, onDuplicate, onD
   const styles = carousel.styles
 
   return (
-    <div className="bg-white rounded-xl border border-black/[0.06] shadow-sm hover:shadow-md transition-all overflow-hidden group">
+    <div className="bg-surface rounded-xl border border-line/[0.08] shadow-sm hover:shadow-md transition-all overflow-hidden group">
 
       {/* Preview de cores do design system */}
       <div
@@ -311,19 +311,19 @@ function WorkspaceCard({ carousel, duplicating, onOpen, onEdit, onDuplicate, onD
       <div className="p-4">
         <div className="flex items-start justify-between gap-2 mb-2">
           <h3
-            className="text-body-md font-semibold text-neutral-900 leading-snug cursor-pointer hover:text-purple-700 transition-colors line-clamp-2"
+            className="text-body-md font-semibold text-ink leading-snug cursor-pointer hover:text-ink transition-colors line-clamp-2"
             onClick={onOpen}
           >
             {carousel.title}
           </h3>
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button onClick={onEdit} className="p-1.5 rounded-lg text-neutral-400 hover:text-purple-700 hover:bg-purple-50 transition-colors" title="Editar">
+            <button onClick={onEdit} className="p-1.5 rounded-lg text-ink-faint hover:text-ink hover:bg-accent/[0.08] transition-colors" title="Editar">
               <Pencil size={14} />
             </button>
-            <button onClick={onDuplicate} disabled={duplicating} className="p-1.5 rounded-lg text-neutral-400 hover:text-purple-700 hover:bg-purple-50 transition-colors disabled:opacity-50" title="Duplicar">
+            <button onClick={onDuplicate} disabled={duplicating} className="p-1.5 rounded-lg text-ink-faint hover:text-ink hover:bg-accent/[0.08] transition-colors disabled:opacity-50" title="Duplicar">
               {duplicating ? <Spinner size="sm" /> : <Copy size={14} />}
             </button>
-            <button onClick={onDelete} className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Excluir">
+            <button onClick={onDelete} className="p-1.5 rounded-lg text-ink-faint hover:text-red-600 hover:bg-red-50 transition-colors" title="Excluir">
               <Trash2 size={14} />
             </button>
           </div>
@@ -333,9 +333,9 @@ function WorkspaceCard({ carousel, duplicating, onOpen, onEdit, onDuplicate, onD
           <Badge variant={STATUS_VARIANTS[carousel.status] ?? 'default'}>
             {STATUS_LABELS[carousel.status] ?? carousel.status}
           </Badge>
-          <span className="text-[11px] text-neutral-400">{carousel.total_slides} slides</span>
-          <span className="text-[11px] text-neutral-300">·</span>
-          <span className="text-[11px] text-neutral-400 flex items-center gap-1">
+          <span className="text-[11px] text-ink-faint">{carousel.total_slides} slides</span>
+          <span className="text-[11px] text-ink-faint">·</span>
+          <span className="text-[11px] text-ink-faint flex items-center gap-1">
             <Clock size={10} />
             {formatDate(carousel.created_at)}
           </span>
@@ -344,7 +344,7 @@ function WorkspaceCard({ carousel, duplicating, onOpen, onEdit, onDuplicate, onD
         <div className="mt-3 flex gap-2">
           <button
             onClick={onOpen}
-            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-purple-100 text-[12px] font-medium text-purple-700 hover:bg-purple-50 transition-colors"
+            className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-line/[0.1] text-[12px] font-medium text-ink hover:bg-accent/[0.08] transition-colors"
           >
             <ExternalLink size={12} />
             Abrir
@@ -352,7 +352,7 @@ function WorkspaceCard({ carousel, duplicating, onOpen, onEdit, onDuplicate, onD
           <button
             onClick={onAgendar}
             title="Enviar para a Agenda"
-            className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-neutral-200 text-[12px] font-medium text-neutral-600 hover:border-purple-200 hover:text-purple-700 hover:bg-purple-50 transition-colors"
+            className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-line/[0.12] text-[12px] font-medium text-ink-muted hover:border-line/[0.12] hover:text-ink hover:bg-accent/[0.08] transition-colors"
           >
             <CalendarPlus size={12} />
             Agendar
@@ -366,11 +366,11 @@ function WorkspaceCard({ carousel, duplicating, onOpen, onEdit, onDuplicate, onD
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center mb-4">
-        <Workflow size={28} className="text-purple-600" />
+      <div className="w-16 h-16 rounded-2xl bg-accent/[0.08] flex items-center justify-center mb-4">
+        <Workflow size={28} className="text-ink-muted" />
       </div>
-      <h3 className="text-heading-sm font-semibold text-neutral-900 mb-2">Nenhum workspace ainda</h3>
-      <p className="text-body-md text-neutral-500 mb-6 max-w-xs">
+      <h3 className="text-heading-sm font-semibold text-ink mb-2">Nenhum workspace ainda</h3>
+      <p className="text-body-md text-ink-muted mb-6 max-w-xs">
         Crie um workspace para gerar carrosséis com IA, aplicar design systems e editar os slides no canvas.
       </p>
       <Button onClick={onCreate}>

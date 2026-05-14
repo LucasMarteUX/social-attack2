@@ -69,9 +69,9 @@ export default function CategoryForm({ open, onClose, onSave, inicial }: Categor
         />
 
         <div className="flex flex-col gap-1">
-          <label className="text-label font-medium text-neutral-700">Descrição (opcional)</label>
+          <label className="text-label font-medium text-ink-muted">Descrição (opcional)</label>
           <textarea
-            className="w-full px-3.5 py-2.5 rounded-md border border-neutral-200 text-body-md text-neutral-900 placeholder:text-neutral-400 outline-none focus:border-purple-600 focus:ring-1 focus:ring-purple-600/20 resize-none transition-colors"
+            className="w-full px-3.5 py-2.5 rounded-md border border-line/[0.12] text-body-md text-ink placeholder:text-ink-faint outline-none focus:border-accent/45 focus:ring-1 focus:ring-accent/12 resize-none transition-colors"
             rows={2}
             placeholder="Do que se trata essa categoria?"
             value={descricao}
@@ -80,7 +80,7 @@ export default function CategoryForm({ open, onClose, onSave, inicial }: Categor
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="text-label font-medium text-neutral-700">Cor</label>
+          <label className="text-label font-medium text-ink-muted">Cor</label>
           <div className="flex flex-wrap gap-2">
             {PALETTE.map((c) => (
               <button
@@ -94,7 +94,7 @@ export default function CategoryForm({ open, onClose, onSave, inicial }: Categor
         </div>
 
         <div className="flex flex-col gap-2">
-          <label className="text-label font-medium text-neutral-700">Ícone</label>
+          <label className="text-label font-medium text-ink-muted">Ícone</label>
           <div className="flex flex-wrap gap-2">
             {ICONES.map((ic) => (
               <button
@@ -102,8 +102,8 @@ export default function CategoryForm({ open, onClose, onSave, inicial }: Categor
                 onClick={() => setIcone(ic)}
                 className={`px-3 py-1.5 rounded-md text-label font-medium border transition-colors ${
                   icone === ic
-                    ? 'bg-purple-50 border-purple-600 text-purple-700'
-                    : 'bg-white border-neutral-200 text-neutral-500 hover:border-neutral-300'
+                    ? 'bg-accent/[0.08] border-accent text-ink'
+                    : 'bg-surface border-line/[0.12] text-ink-muted hover:border-line/[0.14]'
                 }`}
               >
                 {ic}
@@ -113,7 +113,7 @@ export default function CategoryForm({ open, onClose, onSave, inicial }: Categor
         </div>
 
         {/* Preview */}
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-neutral-50 border border-neutral-100">
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-line/[0.04] border border-line/[0.08]">
           <div
             className="w-10 h-10 rounded-lg flex items-center justify-center text-white text-label font-bold flex-shrink-0"
             style={{ backgroundColor: cor }}
@@ -121,8 +121,8 @@ export default function CategoryForm({ open, onClose, onSave, inicial }: Categor
             {nome ? nome[0].toUpperCase() : '?'}
           </div>
           <div>
-            <p className="text-body-md font-semibold text-neutral-900">{nome || 'Nome da categoria'}</p>
-            <p className="text-label text-neutral-400">{icone}</p>
+            <p className="text-body-md font-semibold text-ink">{nome || 'Nome da categoria'}</p>
+            <p className="text-label text-ink-faint">{icone}</p>
           </div>
         </div>
 

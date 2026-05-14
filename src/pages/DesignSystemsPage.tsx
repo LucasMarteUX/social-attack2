@@ -97,8 +97,8 @@ export default function DesignSystemsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-heading-xl font-bold text-neutral-900">Design Systems</h1>
-          <p className="text-body-md text-neutral-500 mt-1">
+          <h1 className="text-heading-xl font-bold text-ink">Design Systems</h1>
+          <p className="text-body-md text-ink-muted mt-1">
             {designSystems.length} {designSystems.length === 1 ? 'sistema' : 'sistemas'} cadastrados
           </p>
         </div>
@@ -137,9 +137,9 @@ export default function DesignSystemsPage() {
       />
 
       <Modal open={!!excluindo} onClose={() => setExcluindo(null)} title="Excluir design system">
-        <p className="text-body-md text-neutral-600 mb-6">
+        <p className="text-body-md text-ink-muted mb-6">
           Tem certeza que deseja excluir{' '}
-          <strong className="text-neutral-900">"{excluindo?.name}"</strong>?
+          <strong className="text-ink">"{excluindo?.name}"</strong>?
           Carrosséis que usam este design system não serão afetados.
         </p>
         <div className="flex gap-3 justify-end">
@@ -169,10 +169,10 @@ function DesignSystemCard({ ds, onEdit, onDuplicate, onDelete }: CardProps) {
     : 'Sem documentação ainda.'
 
   return (
-    <div className="bg-white rounded-xl border border-black/[0.06] shadow-sm hover:shadow-md transition-all overflow-hidden">
+    <div className="bg-surface rounded-xl border border-line/[0.08] shadow-sm hover:shadow-md transition-all overflow-hidden">
       {/* Preview do markdown */}
-      <div className="h-28 bg-neutral-50 border-b border-neutral-100 px-4 py-3 overflow-hidden">
-        <pre className="text-[10px] text-neutral-400 font-mono leading-relaxed whitespace-pre-wrap line-clamp-5">
+      <div className="h-28 bg-line/[0.04] border-b border-line/[0.08] px-4 py-3 overflow-hidden">
+        <pre className="text-[10px] text-ink-faint font-mono leading-relaxed whitespace-pre-wrap line-clamp-5">
           {preview}
         </pre>
       </div>
@@ -180,33 +180,33 @@ function DesignSystemCard({ ds, onEdit, onDuplicate, onDelete }: CardProps) {
       <div className="p-4">
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex items-center gap-2 min-w-0">
-            <FileText size={14} className="text-purple-500 flex-shrink-0" />
-            <h3 className="text-body-md font-semibold text-neutral-900 leading-snug truncate">{ds.name}</h3>
+            <FileText size={14} className="text-ink-muted flex-shrink-0" />
+            <h3 className="text-body-md font-semibold text-ink leading-snug truncate">{ds.name}</h3>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
-            <button onClick={onEdit} className="p-1.5 rounded-lg text-neutral-400 hover:text-purple-700 hover:bg-purple-50 transition-colors">
+            <button onClick={onEdit} className="p-1.5 rounded-lg text-ink-faint hover:text-ink hover:bg-accent/[0.08] transition-colors">
               <Pencil size={14} />
             </button>
-            <button onClick={onDuplicate} className="p-1.5 rounded-lg text-neutral-400 hover:text-purple-700 hover:bg-purple-50 transition-colors">
+            <button onClick={onDuplicate} className="p-1.5 rounded-lg text-ink-faint hover:text-ink hover:bg-accent/[0.08] transition-colors">
               <Copy size={14} />
             </button>
-            <button onClick={onDelete} className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors">
+            <button onClick={onDelete} className="p-1.5 rounded-lg text-ink-faint hover:text-red-600 hover:bg-red-50 transition-colors">
               <Trash2 size={14} />
             </button>
           </div>
         </div>
-        <p className="text-[11px] text-neutral-400">
+        <p className="text-[11px] text-ink-faint">
           {ds.markdown ? `${ds.markdown.split('\n').filter(Boolean).length} linhas de documentação` : 'Sem conteúdo'}
         </p>
         {(ds.reference_image_urls?.length ?? 0) > 0 && (
           <div className="mt-3 flex items-center gap-2">
-            <ImageIcon size={12} className="text-purple-400 flex-shrink-0" />
+            <ImageIcon size={12} className="text-ink-faint flex-shrink-0" />
             <div className="flex gap-1 overflow-hidden">
               {ds.reference_image_urls.slice(0, 5).map((url) => (
-                <img key={url} src={url} alt="" className="w-9 h-9 rounded-md object-cover border border-neutral-100 flex-shrink-0" />
+                <img key={url} src={url} alt="" className="w-9 h-9 rounded-md object-cover border border-line/[0.08] flex-shrink-0" />
               ))}
             </div>
-            <span className="text-[10px] text-neutral-400 whitespace-nowrap">{ds.reference_image_urls.length} ref.</span>
+            <span className="text-[10px] text-ink-faint whitespace-nowrap">{ds.reference_image_urls.length} ref.</span>
           </div>
         )}
       </div>
@@ -217,11 +217,11 @@ function DesignSystemCard({ ds, onEdit, onDuplicate, onDelete }: CardProps) {
 function EmptyState({ onNew }: { onNew: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-purple-50 flex items-center justify-center mb-4">
-        <Palette size={28} className="text-purple-600" />
+      <div className="w-16 h-16 rounded-2xl bg-accent/[0.08] flex items-center justify-center mb-4">
+        <Palette size={28} className="text-ink-muted" />
       </div>
-      <h3 className="text-heading-sm font-semibold text-neutral-900 mb-2">Nenhum design system ainda</h3>
-      <p className="text-body-md text-neutral-500 mb-6 max-w-xs">
+      <h3 className="text-heading-sm font-semibold text-ink mb-2">Nenhum design system ainda</h3>
+      <p className="text-body-md text-ink-muted mb-6 max-w-xs">
         Crie um design system e documente em markdown as cores, tipografia e regras de layout dos seus carrosséis.
       </p>
       <Button onClick={onNew}>

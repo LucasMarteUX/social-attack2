@@ -80,8 +80,8 @@ export default function BibliotecaPage() {
   if (!categoria) {
     return (
       <div className="flex flex-col items-center justify-center py-24">
-        <p className="text-body-md text-neutral-500">Categoria não encontrada.</p>
-        <Link to="/categorias" className="mt-4 text-purple-700 text-body-md font-medium hover:underline">
+        <p className="text-body-md text-ink-muted">Categoria não encontrada.</p>
+        <Link to="/categorias" className="mt-4 text-ink text-body-md font-medium hover:underline">
           Voltar para Categorias
         </Link>
       </div>
@@ -91,8 +91,8 @@ export default function BibliotecaPage() {
   return (
     <div>
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-label text-neutral-400 mb-6">
-        <Link to="/categorias" className="hover:text-purple-700 transition-colors">Categorias</Link>
+      <div className="flex items-center gap-2 text-label text-ink-faint mb-6">
+        <Link to="/categorias" className="hover:text-ink transition-colors">Categorias</Link>
         <ChevronRight size={14} />
         <span className="font-medium" style={{ color: categoria.cor }}>{categoria.nome}</span>
       </div>
@@ -102,9 +102,9 @@ export default function BibliotecaPage() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: categoria.cor }} />
-            <h1 className="text-heading-xl font-bold text-neutral-900">Biblioteca de Ideias</h1>
+            <h1 className="text-heading-xl font-bold text-ink">Biblioteca de Ideias</h1>
           </div>
-          <p className="text-body-md text-neutral-500">
+          <p className="text-body-md text-ink-muted">
             {ideias.length} {ideias.length === 1 ? 'ideia' : 'ideias'} em {categoria.nome}
           </p>
         </div>
@@ -129,8 +129,8 @@ export default function BibliotecaPage() {
             onClick={() => setFiltro(f.key)}
             className={`px-4 py-1.5 rounded-full text-label font-medium border transition-colors ${
               filtro === f.key
-                ? 'border-purple-600 bg-purple-50 text-purple-700'
-                : 'border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300'
+                ? 'border-accent bg-accent/[0.08] text-ink'
+                : 'border-line/[0.12] bg-surface text-ink-muted hover:border-line/[0.14]'
             }`}
           >
             {f.label}
@@ -140,9 +140,9 @@ export default function BibliotecaPage() {
 
       {/* Loading IA */}
       {gerandoIA && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-purple-50 border border-purple-100 mb-6">
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-accent/[0.08] border border-line/[0.1] mb-6">
           <Spinner size="sm" />
-          <p className="text-body-md text-purple-700 font-medium">Gemini está gerando ideias para você…</p>
+          <p className="text-body-md text-ink font-medium">Gemini está gerando ideias para você…</p>
         </div>
       )}
 
@@ -175,9 +175,9 @@ export default function BibliotecaPage() {
 
       {/* Modal confirmar exclusão */}
       <Modal open={!!excluindo} onClose={() => setExcluindo(null)} title="Excluir ideia">
-        <p className="text-body-md text-neutral-600 mb-6">
+        <p className="text-body-md text-ink-muted mb-6">
           Tem certeza que deseja excluir{' '}
-          <strong className="text-neutral-900">"{excluindo?.titulo}"</strong>?
+          <strong className="text-ink">"{excluindo?.titulo}"</strong>?
         </p>
         <div className="flex gap-3 justify-end">
           <Button variant="ghost" onClick={() => setExcluindo(null)}>Cancelar</Button>
@@ -200,10 +200,10 @@ function EmptyState({ filtro, onNew }: { filtro: Filtro; onNew: () => void }) {
 
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
-      <div className="w-14 h-14 rounded-2xl bg-purple-50 flex items-center justify-center mb-4">
-        <Lightbulb size={24} className="text-purple-600" />
+      <div className="w-14 h-14 rounded-2xl bg-accent/[0.08] flex items-center justify-center mb-4">
+        <Lightbulb size={24} className="text-ink-muted" />
       </div>
-      <p className="text-body-md text-neutral-500 mb-5 max-w-xs">{msg}</p>
+      <p className="text-body-md text-ink-muted mb-5 max-w-xs">{msg}</p>
       {filtro === 'todas' && (
         <Button onClick={onNew}>
           <Plus size={16} /> Nova ideia

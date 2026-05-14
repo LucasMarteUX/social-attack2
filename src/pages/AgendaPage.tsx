@@ -147,18 +147,18 @@ export default function AgendaPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-display-md font-bold text-neutral-900 tracking-tight">Agenda</h1>
-          <p className="text-body-md text-neutral-500 mt-1">
+          <h1 className="text-display-md font-bold text-ink tracking-tight">Agenda</h1>
+          <p className="text-body-md text-ink-muted mt-1">
             {agendamentos.length} publicaç{agendamentos.length === 1 ? 'ão' : 'ões'} planejada{agendamentos.length === 1 ? '' : 's'}
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="inline-flex p-1 rounded-full bg-neutral-100">
+          <div className="inline-flex p-1 rounded-full bg-line/[0.06]">
             <button
               onClick={() => setView('calendario')}
               className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-label font-semibold transition-all ${
-                view === 'calendario' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'
+                view === 'calendario' ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink-muted'
               }`}
             >
               <CalendarDays size={13} />
@@ -167,7 +167,7 @@ export default function AgendaPage() {
             <button
               onClick={() => setView('lista')}
               className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-label font-semibold transition-all ${
-                view === 'lista' ? 'bg-white text-neutral-900 shadow-sm' : 'text-neutral-500 hover:text-neutral-700'
+                view === 'lista' ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink-muted'
               }`}
             >
               <List size={13} />
@@ -188,22 +188,22 @@ export default function AgendaPage() {
         {/* Coluna principal */}
         <div className="flex-1 min-w-0">
           {view === 'calendario' && (
-            <div className="rounded-3xl bg-white border border-neutral-100 p-6 shadow-card">
+            <div className="rounded-3xl bg-surface border border-line/[0.08] p-6 shadow-card">
               <div className="flex items-center justify-between mb-5">
-                <h2 className="text-heading-md font-bold text-neutral-900 tracking-tight">
-                  {MESES[mesAtual.mes]} <span className="text-neutral-400 font-medium">{mesAtual.ano}</span>
+                <h2 className="text-heading-md font-bold text-ink tracking-tight">
+                  {MESES[mesAtual.mes]} <span className="text-ink-faint font-medium">{mesAtual.ano}</span>
                 </h2>
                 <div className="flex items-center gap-1">
-                  <button onClick={() => navegarMes(-1)} className="w-9 h-9 rounded-full hover:bg-neutral-100 flex items-center justify-center text-neutral-600 transition-colors">
+                  <button onClick={() => navegarMes(-1)} className="w-9 h-9 rounded-full hover:bg-line/[0.06] flex items-center justify-center text-ink-muted transition-colors">
                     <ChevronLeft size={17} />
                   </button>
                   <button
                     onClick={() => setMesAtual({ ano: hoje.getFullYear(), mes: hoje.getMonth() })}
-                    className="px-3 py-1.5 rounded-full text-label font-semibold text-neutral-600 hover:bg-neutral-100 transition-colors"
+                    className="px-3 py-1.5 rounded-full text-label font-semibold text-ink-muted hover:bg-line/[0.06] transition-colors"
                   >
                     Hoje
                   </button>
-                  <button onClick={() => navegarMes(1)} className="w-9 h-9 rounded-full hover:bg-neutral-100 flex items-center justify-center text-neutral-600 transition-colors">
+                  <button onClick={() => navegarMes(1)} className="w-9 h-9 rounded-full hover:bg-line/[0.06] flex items-center justify-center text-ink-muted transition-colors">
                     <ChevronRight size={17} />
                   </button>
                 </div>
@@ -211,7 +211,7 @@ export default function AgendaPage() {
 
               <div className="grid grid-cols-7 gap-1 mb-2">
                 {DIAS_SEMANA.map((d) => (
-                  <div key={d} className="text-center text-[10px] font-bold uppercase tracking-wider text-neutral-400 py-2">
+                  <div key={d} className="text-center text-[10px] font-bold uppercase tracking-wider text-ink-faint py-2">
                     {d}
                   </div>
                 ))}
@@ -224,12 +224,12 @@ export default function AgendaPage() {
                     <div
                       key={i}
                       className={`aspect-square sm:aspect-auto sm:min-h-[88px] p-1.5 rounded-xl border transition-colors ${
-                        d.dia === null ? 'border-transparent' : isHoje ? 'border-purple-300 bg-purple-50/40' : 'border-neutral-100 hover:bg-neutral-50'
+                        d.dia === null ? 'border-transparent' : isHoje ? 'border-accent/35 bg-accent/[0.08]/40' : 'border-line/[0.08] hover:bg-line/[0.04]'
                       }`}
                     >
                       {d.dia !== null && (
                         <>
-                          <div className={`text-label font-semibold mb-1 ${isHoje ? 'text-purple-700' : 'text-neutral-600'}`}>
+                          <div className={`text-label font-semibold mb-1 ${isHoje ? 'text-ink' : 'text-ink-muted'}`}>
                             {d.dia}
                           </div>
                           <div className="flex flex-col gap-1">
@@ -258,7 +258,7 @@ export default function AgendaPage() {
                               )
                             })}
                             {d.eventos.length > 2 && (
-                              <span className="text-[10px] text-neutral-400 px-1.5">+{d.eventos.length - 2}</span>
+                              <span className="text-[10px] text-ink-faint px-1.5">+{d.eventos.length - 2}</span>
                             )}
                           </div>
                         </>
@@ -271,15 +271,15 @@ export default function AgendaPage() {
           )}
 
           {view === 'lista' && (
-            <div className="rounded-3xl bg-white border border-neutral-100 p-6 shadow-card">
+            <div className="rounded-3xl bg-surface border border-line/[0.08] p-6 shadow-card">
               <div className="mb-4">
-                <h2 className="text-heading-sm font-bold text-neutral-900">Todas as publicações</h2>
-                <p className="text-label text-neutral-400 mt-0.5">Ordenadas por data</p>
+                <h2 className="text-heading-sm font-bold text-ink">Todas as publicações</h2>
+                <p className="text-label text-ink-faint mt-0.5">Ordenadas por data</p>
               </div>
 
               {agendamentosOrdenados.length === 0 ? (
                 <div className="py-16 text-center">
-                  <p className="text-body-md text-neutral-400">Nada agendado ainda.</p>
+                  <p className="text-body-md text-ink-faint">Nada agendado ainda.</p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
@@ -294,19 +294,19 @@ export default function AgendaPage() {
                     return (
                       <div
                         key={a.id}
-                        className="flex items-center gap-4 p-4 rounded-2xl border border-neutral-100 hover:bg-neutral-50 transition-colors group"
+                        className="flex items-center gap-4 p-4 rounded-2xl border border-line/[0.08] hover:bg-line/[0.04] transition-colors group"
                       >
                         <div
-                          className="flex flex-col items-center justify-center w-14 h-16 rounded-2xl bg-neutral-50 border border-neutral-100 flex-shrink-0 cursor-pointer"
+                          className="flex flex-col items-center justify-center w-14 h-16 rounded-2xl bg-line/[0.04] border border-line/[0.08] flex-shrink-0 cursor-pointer"
                           onClick={() => {
                             if (isCarousel && carousel) navigate(`/workspace/${carousel.id}`)
                             else if (cri) navigate(`/criativos/${cri.id}`)
                           }}
                         >
-                          <span className="text-[10px] font-bold uppercase text-neutral-400">
+                          <span className="text-[10px] font-bold uppercase text-ink-faint">
                             {data.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '')}
                           </span>
-                          <span className="text-heading-md font-bold text-neutral-900 leading-none mt-0.5">
+                          <span className="text-heading-md font-bold text-ink leading-none mt-0.5">
                             {data.getDate()}
                           </span>
                         </div>
@@ -319,25 +319,25 @@ export default function AgendaPage() {
                           }}
                         >
                           <div className="flex items-center gap-1.5">
-                            {isCarousel && <Workflow size={13} className="text-purple-500 flex-shrink-0" />}
-                            <p className="text-body-md font-semibold text-neutral-900 truncate">{titulo}</p>
+                            {isCarousel && <Workflow size={13} className="text-ink-muted flex-shrink-0" />}
+                            <p className="text-body-md font-semibold text-ink truncate">{titulo}</p>
                           </div>
                           <div className="flex items-center gap-2 mt-1 flex-wrap">
                             {cat && (
                               <>
                                 <div className="flex items-center gap-1.5">
                                   <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.cor }} />
-                                  <span className="text-label text-neutral-500">{cat.nome}</span>
+                                  <span className="text-label text-ink-muted">{cat.nome}</span>
                                 </div>
-                                <span className="text-neutral-300">·</span>
+                                <span className="text-ink-faint">·</span>
                               </>
                             )}
-                            <span className="text-label text-neutral-500 flex items-center gap-1">
+                            <span className="text-label text-ink-muted flex items-center gap-1">
                               <Instagram size={11} />
                               {a.plataforma}
                             </span>
-                            <span className="text-neutral-300">·</span>
-                            <span className="text-label text-neutral-500">
+                            <span className="text-ink-faint">·</span>
+                            <span className="text-label text-ink-muted">
                               {data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
@@ -351,7 +351,7 @@ export default function AgendaPage() {
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => abrirEdicao(a)}
-                            className="p-1.5 rounded-lg text-neutral-400 hover:text-purple-700 hover:bg-purple-50 transition-colors"
+                            className="p-1.5 rounded-lg text-ink-faint hover:text-ink hover:bg-accent/[0.08] transition-colors"
                             title="Editar"
                           >
                             <Pencil size={13} />
@@ -366,7 +366,7 @@ export default function AgendaPage() {
                               </button>
                               <button
                                 onClick={() => setExcluindoId(null)}
-                                className="p-1.5 rounded-lg text-neutral-400 hover:bg-neutral-100 transition-colors"
+                                className="p-1.5 rounded-lg text-ink-faint hover:bg-line/[0.06] transition-colors"
                               >
                                 <X size={12} />
                               </button>
@@ -374,7 +374,7 @@ export default function AgendaPage() {
                           ) : (
                             <button
                               onClick={() => setExcluindoId(a.id)}
-                              className="p-1.5 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              className="p-1.5 rounded-lg text-ink-faint hover:text-red-600 hover:bg-red-50 transition-colors"
                               title="Excluir"
                             >
                               <Trash2 size={13} />
@@ -392,17 +392,17 @@ export default function AgendaPage() {
 
         {/* Sidebar — Próximos eventos */}
         <div className="w-72 flex-shrink-0">
-          <div className="rounded-3xl bg-white border border-neutral-100 p-5 shadow-card sticky top-6">
+          <div className="rounded-3xl bg-surface border border-line/[0.08] p-5 shadow-card sticky top-6">
             <div className="mb-4">
-              <h2 className="text-heading-sm font-bold text-neutral-900">Próximos posts</h2>
-              <p className="text-label text-neutral-400 mt-0.5">
+              <h2 className="text-heading-sm font-bold text-ink">Próximos posts</h2>
+              <p className="text-label text-ink-faint mt-0.5">
                 {proximosEventos.length === 0 ? 'Nenhum agendado' : `${proximosEventos.length} próximo${proximosEventos.length > 1 ? 's' : ''}`}
               </p>
             </div>
 
             {proximosEventos.length === 0 ? (
               <div className="py-8 text-center">
-                <p className="text-label text-neutral-400">Nada nos próximos dias.</p>
+                <p className="text-label text-ink-faint">Nada nos próximos dias.</p>
               </div>
             ) : (
               <div className="flex flex-col gap-2">
@@ -414,23 +414,23 @@ export default function AgendaPage() {
                   return (
                     <div
                       key={a.id}
-                      className="rounded-xl border border-neutral-100 p-3 hover:bg-neutral-50 transition-colors group"
+                      className="rounded-xl border border-line/[0.08] p-3 hover:bg-line/[0.04] transition-colors group"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 mb-1">
-                            {isCarousel && <Workflow size={11} className="text-purple-500 flex-shrink-0" />}
-                            <p className="text-[12px] font-semibold text-neutral-800 truncate leading-snug">{titulo}</p>
+                            {isCarousel && <Workflow size={11} className="text-ink-muted flex-shrink-0" />}
+                            <p className="text-[12px] font-semibold text-ink truncate leading-snug">{titulo}</p>
                           </div>
-                          <p className="text-[11px] text-neutral-400">
+                          <p className="text-[11px] text-ink-faint">
                             {data.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} · {data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                           </p>
                           <div className="flex items-center gap-1.5 mt-1.5">
-                            <span className="text-[10px] text-neutral-400 flex items-center gap-0.5">
+                            <span className="text-[10px] text-ink-faint flex items-center gap-0.5">
                               <Instagram size={10} />
                               {a.plataforma}
                             </span>
-                            <span className="text-neutral-200">·</span>
+                            <span className="text-ink-faint">·</span>
                             <Badge variant={STATUS_VARIANT[a.status] ?? 'neutral'} dot>
                               {STATUS_LABEL[a.status]}
                             </Badge>
@@ -441,7 +441,7 @@ export default function AgendaPage() {
                         <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                           <button
                             onClick={() => abrirEdicao(a)}
-                            className="p-1 rounded-lg text-neutral-400 hover:text-purple-700 hover:bg-purple-50 transition-colors"
+                            className="p-1 rounded-lg text-ink-faint hover:text-ink hover:bg-accent/[0.08] transition-colors"
                             title="Editar"
                           >
                             <Pencil size={12} />
@@ -457,7 +457,7 @@ export default function AgendaPage() {
                               </button>
                               <button
                                 onClick={() => setExcluindoId(null)}
-                                className="p-1 rounded-lg text-neutral-400 hover:bg-neutral-100 transition-colors"
+                                className="p-1 rounded-lg text-ink-faint hover:bg-line/[0.06] transition-colors"
                               >
                                 <X size={11} />
                               </button>
@@ -465,7 +465,7 @@ export default function AgendaPage() {
                           ) : (
                             <button
                               onClick={() => setExcluindoId(a.id)}
-                              className="p-1 rounded-lg text-neutral-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                              className="p-1 rounded-lg text-ink-faint hover:text-red-600 hover:bg-red-50 transition-colors"
                               title="Excluir"
                             >
                               <Trash2 size={12} />
@@ -487,31 +487,31 @@ export default function AgendaPage() {
         <div className="flex flex-col gap-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Data *</label>
+              <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Data *</label>
               <input
                 type="date"
                 value={editData}
                 onChange={(e) => setEditData(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all"
+                className="px-3 py-2 rounded-xl border border-line/[0.12] text-sm text-ink outline-none focus:border-accent/45 focus:ring-2 focus:ring-accent/12 transition-all"
               />
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Horário</label>
+              <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Horário</label>
               <input
                 type="time"
                 value={editHora}
                 onChange={(e) => setEditHora(e.target.value)}
-                className="px-3 py-2 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all"
+                className="px-3 py-2 rounded-xl border border-line/[0.12] text-sm text-ink outline-none focus:border-accent/45 focus:ring-2 focus:ring-accent/12 transition-all"
               />
             </div>
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Plataforma</label>
+            <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Plataforma</label>
             <select
               value={editPlataforma}
               onChange={(e) => setEditPlataforma(e.target.value as typeof editPlataforma)}
-              className="px-3 py-2 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all bg-white"
+              className="px-3 py-2 rounded-xl border border-line/[0.12] text-sm text-ink outline-none focus:border-accent/45 focus:ring-2 focus:ring-accent/12 transition-all bg-surface"
             >
               <option value="instagram">Instagram</option>
               <option value="linkedin">LinkedIn</option>
@@ -520,11 +520,11 @@ export default function AgendaPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Status</label>
+            <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Status</label>
             <select
               value={editStatus}
               onChange={(e) => setEditStatus(e.target.value as typeof editStatus)}
-              className="px-3 py-2 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all bg-white"
+              className="px-3 py-2 rounded-xl border border-line/[0.12] text-sm text-ink outline-none focus:border-accent/45 focus:ring-2 focus:ring-accent/12 transition-all bg-surface"
             >
               <option value="agendado">Agendado</option>
               <option value="publicado">Publicado</option>
@@ -533,13 +533,13 @@ export default function AgendaPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">Notas</label>
+            <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Notas</label>
             <textarea
               value={editNotas}
               onChange={(e) => setEditNotas(e.target.value)}
               rows={2}
               placeholder="Observações sobre a postagem..."
-              className="px-3 py-2 rounded-xl border border-neutral-200 text-sm text-neutral-900 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all resize-none"
+              className="px-3 py-2 rounded-xl border border-line/[0.12] text-sm text-ink outline-none focus:border-accent/45 focus:ring-2 focus:ring-accent/12 transition-all resize-none"
             />
           </div>
 

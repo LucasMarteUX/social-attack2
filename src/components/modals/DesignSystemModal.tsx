@@ -136,15 +136,15 @@ export default function DesignSystemModal({ open, onClose, onSave, inicial, onAn
         />
 
         <div className="flex flex-col gap-1">
-          <label className="text-label font-medium text-neutral-700">
+          <label className="text-label font-medium text-ink-muted">
             Documentação do Design System
           </label>
-          <p className="text-[11px] text-neutral-400 mb-1">
+          <p className="text-[11px] text-ink-faint mb-1">
             Descreva em markdown as cores, tipografia, espaçamentos e regras de layout.
             A IA consultará esse documento ao gerar os carrosséis.
           </p>
           <textarea
-            className="w-full px-3 py-2.5 rounded-lg border border-neutral-200 text-body-sm text-neutral-900 outline-none focus:border-purple-500 transition-colors resize-none font-mono leading-relaxed"
+            className="w-full px-3 py-2.5 rounded-lg border border-line/[0.12] text-body-sm text-ink outline-none focus:border-accent/45 focus:ring-1 focus:ring-accent/12 transition-colors resize-none font-mono leading-relaxed"
             rows={16}
             placeholder={PLACEHOLDER}
             value={dados.markdown}
@@ -152,14 +152,14 @@ export default function DesignSystemModal({ open, onClose, onSave, inicial, onAn
           />
         </div>
 
-        <div className="flex flex-col gap-2 border-t border-neutral-100 pt-3">
+        <div className="flex flex-col gap-2 border-t border-line/[0.08] pt-3">
           <div className="flex items-start gap-2">
-            <ImageIcon size={14} className="text-purple-500 mt-0.5 flex-shrink-0" />
+            <ImageIcon size={14} className="text-ink-muted mt-0.5 flex-shrink-0" />
             <div>
-              <label className="text-label font-medium text-neutral-700 block">
+              <label className="text-label font-medium text-ink-muted block">
                 Referências visuais (opcional)
               </label>
-              <p className="text-[11px] text-neutral-400 mt-0.5">
+              <p className="text-[11px] text-ink-faint mt-0.5">
                 Imagens para orientar estilo na geração (cores, ritmo, hierarquia). Não serão copiadas literalmente.
                 {inicial?.id
                   ? ' Ao editar: o envio para o armazenamento ocorre assim que você escolhe os arquivos.'
@@ -171,7 +171,7 @@ export default function DesignSystemModal({ open, onClose, onSave, inicial, onAn
           {dados.reference_image_urls.length > 0 && (
             <div className="flex flex-wrap gap-2">
               {dados.reference_image_urls.map((url) => (
-                <div key={url} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-neutral-200 bg-neutral-50">
+                <div key={url} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-line/[0.12] bg-line/[0.04]">
                   <img src={url} alt="" className="w-full h-full object-cover" />
                   <button
                     type="button"
@@ -189,9 +189,9 @@ export default function DesignSystemModal({ open, onClose, onSave, inicial, onAn
           {pendingFiles.length > 0 && (
             <ul className="flex flex-col gap-1">
               {pendingFiles.map((f, i) => (
-                <li key={`${f.name}-${i}`} className="flex items-center justify-between text-[11px] bg-purple-50 px-2 py-1 rounded-md border border-purple-100">
+                <li key={`${f.name}-${i}`} className="flex items-center justify-between text-[11px] bg-accent/[0.08] px-2 py-1 rounded-md border border-line/[0.1]">
                   <span className="truncate flex-1 mr-2">{f.name}</span>
-                  <button type="button" onClick={() => removerPending(i)} className="text-purple-600 hover:text-purple-800">
+                  <button type="button" onClick={() => removerPending(i)} className="text-ink-muted hover:text-ink">
                     <X size={12} />
                   </button>
                 </li>
@@ -205,30 +205,30 @@ export default function DesignSystemModal({ open, onClose, onSave, inicial, onAn
             multiple
             disabled={enviandoRefs}
             onChange={(e) => void handleFiles(e)}
-            className="block w-full text-[11px] text-neutral-600 disabled:opacity-50
-              file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-dashed file:border-neutral-300
-              file:bg-neutral-50 file:px-3 file:py-2 file:text-[11px] file:font-medium file:text-neutral-700
-              hover:file:bg-neutral-100 file:inline-flex file:items-center"
+            className="block w-full text-[11px] text-ink-muted disabled:opacity-50
+              file:mr-3 file:cursor-pointer file:rounded-lg file:border file:border-dashed file:border-line/[0.14]
+              file:bg-line/[0.04] file:px-3 file:py-2 file:text-[11px] file:font-medium file:text-ink-muted
+              hover:file:bg-line/[0.06] file:inline-flex file:items-center"
           />
           {enviandoRefs && (
-            <div className="flex items-center gap-2 text-[11px] text-purple-700 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 text-[11px] text-ink bg-accent/[0.08] border border-line/[0.1] rounded-lg px-3 py-2">
               <Spinner size="sm" />
               Enviando imagens para o armazenamento…
             </div>
           )}
           {!inicial?.id && pendingFiles.length === 0 && (
-            <p className="text-[10px] text-neutral-400">
+            <p className="text-[10px] text-ink-faint">
               Nenhum arquivo na fila. Escolha imagens e depois clique em «Criar design system» para gravar e enviar.
             </p>
           )}
           {!inicial?.id && pendingFiles.length > 0 && (
-            <p className="text-[11px] font-medium text-purple-800 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">
+            <p className="text-[11px] font-medium text-ink bg-accent/[0.08] border border-line/[0.1] rounded-lg px-3 py-2">
               {pendingFiles.length} arquivo(s) na fila — serão enviados ao criar o design system.
             </p>
           )}
         </div>
 
-        <div className="flex justify-end gap-3 pt-2 border-t border-neutral-100">
+        <div className="flex justify-end gap-3 pt-2 border-t border-line/[0.08]">
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
