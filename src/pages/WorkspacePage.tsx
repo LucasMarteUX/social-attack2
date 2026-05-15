@@ -708,7 +708,7 @@ export default function WorkspacePage() {
         setImageModal({ slideId })
       },
       onUsarVarianteImagem: async (slideId: string, variant: { id: string; url: string; prompt: string }) => {
-        await atualizarImagem(slideId, variant.url, 'generated', variant.prompt, true)
+        const updated = await atualizarImagem(slideId, variant.url, 'generated', variant.prompt, true)
         setSlidePendingVariants((prev) => {
           const next = {
             ...prev,
@@ -717,7 +717,8 @@ export default function WorkspacePage() {
           slidePendingVariantsRef.current = next
           return next
         })
-        refreshSlideNode(slideId)
+        // Passa o slide retornado direto — evita usar o state stale de `slides`
+        refreshSlideNode(slideId, updated ?? undefined)
       },
       onDescartarVarianteImagem: (slideId: string, variantId: string) => {
         setSlidePendingVariants((prev) => {
@@ -735,12 +736,12 @@ export default function WorkspacePage() {
         const { data, error } = await supabase.storage.from('carousel-images').upload(path, file, { upsert: true })
         if (error) throw new Error(error.message)
         const { data: urlData } = supabase.storage.from('carousel-images').getPublicUrl(data.path)
-        await atualizarImagem(slideId, urlData.publicUrl, 'uploaded')
-        refreshSlideNode(slideId)
+        const updated = await atualizarImagem(slideId, urlData.publicUrl, 'uploaded')
+        refreshSlideNode(slideId, updated ?? undefined)
       },
       onRemoverImagem: async (slideId: string) => {
-        await atualizarImagem(slideId, null, 'none')
-        refreshSlideNode(slideId)
+        const updated = await atualizarImagem(slideId, null, 'none')
+        refreshSlideNode(slideId, updated ?? undefined)
       },
       onNavegar: (_slideNumber: number) => {},
     }
