@@ -10,12 +10,13 @@
 Tenho um agente de atendimento WhatsApp em produção e quero fazer atualizações.
 
 Os arquivos atuais do agente são:
-- `01_prompt_onboarding.md` — contexto do negócio
 - `system_prompt.md` — prompt do sistema em uso
 - `base_conhecimento.md` — base de conhecimento atual
 - `regras_negocio.md` — regras e fluxos atuais
 
-Vou te informar o que quero atualizar e você vai me dizer exatamente o que mudar em qual arquivo, e gerar o trecho atualizado.
+> **Como aplicar as atualizações:** As mudanças de comportamento (system prompt e base de conhecimento) são aplicadas diretamente pelo painel do app na aba "Configurar Agente", sem necessidade de redeploy. Mudanças na lógica de código (filtros, rate limit, fluxos de escalação) exigem atualizar e reimplantar a Edge Function.
+
+Vou te informar o que quero atualizar e você vai me dizer exatamente o que mudar, e gerar o trecho atualizado pronto para colar.
 
 ---
 
@@ -61,7 +62,9 @@ Quero que o agente encaminhe para humano em uma situação nova.
 *Me diga:*
 - O que deve disparar a escalada?
 - Qual mensagem o agente deve enviar antes de escalar?
-- O que deve ser registrado no banco de dados?
+- A escalada é por palavra-chave detectada na mensagem ou na resposta do agente?
+
+> As palavras-chave de escalação são detectadas na Edge Function (lógica de código). Para adicionar uma nova, o trecho `ESCALATION_KEYWORDS` deve ser atualizado na função e reimplantada.
 
 ### F — Revisar com base em conversas reais
 Tenho conversas reais do histórico que mostram onde o agente errou.
@@ -79,7 +82,21 @@ Para cada atualização solicitada:
 1. **Análise:** por que a mudança faz sentido
 2. **O que muda:** em qual arquivo e em qual seção
 3. **Trecho atualizado:** o conteúdo novo pronto para substituir
-4. **Impacto:** se essa mudança afeta alguma outra parte do sistema
+4. **Como aplicar:**
+   - Se for system_prompt ou base_conhecimento → colar no painel do app (sem redeploy)
+   - Se for lógica de escalação ou rate limit → atualizar a Edge Function e reimplantar
+
+---
+
+## Onde aplicar cada tipo de mudança
+
+| Mudança | Arquivo | Como aplicar |
+|---------|---------|-------------|
+| Comportamento, tom, regras | `system_prompt` na tabela `whatsapp_config` | Painel do app → "Configurar Agente" → Salvar |
+| FAQ, informações do produto | `base_conhecimento` na tabela `whatsapp_config` | Painel do app → "Configurar Agente" → Salvar |
+| Palavras de escalação | `ESCALATION_KEYWORDS` na Edge Function | Editar função + reimplantar |
+| Rate limit (msgs/min, msgs/hora) | Constantes na Edge Function | Editar função + reimplantar |
+| Filtros de mensagem | Condições `if` no início da Edge Function | Editar função + reimplantar |
 
 ---
 

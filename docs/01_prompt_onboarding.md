@@ -37,6 +37,8 @@ PDFs, apresentações, docs internos, roteiros de atendimento, scripts de vendas
 **6. Qual é o stack técnico do seu sistema?**
 Ex: Next.js + Supabase, Node.js + Firebase, WordPress, etc. Se não souber, descreve como o sistema foi feito.
 
+> Se o stack for **React/Next.js + Supabase**, o guia técnico vai usar Edge Functions Deno — o agente será implementado sem dependências externas, usando fetch nativo.
+
 ---
 
 Quando você responder a Etapa 1, eu acesso os links, leio os arquivos e faço mais perguntas específicas sobre o negócio antes de começar a construir qualquer coisa.
@@ -66,16 +68,36 @@ Quando você responder a Etapa 1, eu acesso os links, leio os arquivos e faço m
 
 ---
 
+## ETAPA 4 — Credenciais e Ambiente
+
+*(Vou precisar dessas informações para o guia técnico)*
+
+**Z-API:**
+- Você já tem conta na Z-API?
+- Já tem uma instância criada?
+- Tem o Instance ID e o Token da instância?
+
+> Além do Instance ID e Token, a Z-API também exige um **Client-Token** separado — gerado na aba Segurança do painel. Vou te lembrar disso no guia de implementação.
+
+**IA:**
+- Tem chave da API do Google AI Studio (Gemini)?
+- Se não, criar em: https://aistudio.google.com/app/apikey
+
+**Supabase:**
+- Tem projeto Supabase criado?
+- As Edge Functions estão habilitadas?
+
+---
+
 ## O que vou criar para você
 
 Ao final do processo, vou entregar:
 
-1. **Arquivo de regras de atendimento** personalizado para o seu negócio
-2. **Base de conhecimento** estruturada com tudo que coletamos
-3. **Prompt do sistema** pronto para ser usado com Gemini, Claude ou GPT
-4. **Guia técnico de implementação** com os passos exatos para o seu stack
-5. **Tabelas do banco de dados** (Supabase, Firebase, ou outro)
-6. **Checklist de go-live** para não esquecer nada
+1. **System Prompt do Agente** — personalizado para o seu negócio
+2. **Base de Conhecimento** — estruturada com tudo que coletamos
+3. **Regras de Negócio e Fluxos** — escalação, limites, fluxos de conversa
+4. **Guia Técnico de Implementação** — passo a passo para o seu stack, com o prompt pronto para o Claude Code
+5. **Checklist de go-live** — para não esquecer nada antes de ligar
 
 ---
 

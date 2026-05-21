@@ -1,7 +1,7 @@
 # Framework de Agente de Atendimento WhatsApp com IA
 
 **Por:** Lucas  
-**Versão:** 1.0 — Maio 2026
+**Versão:** 2.0 — Maio 2026
 
 ---
 
@@ -26,7 +26,7 @@ O processo tem três momentos:
 
 2. IMPLEMENTAR
    Pegar os arquivos gerados e passar pro Claude Code
-   Claude Code cria o webhook, as tabelas, o componente React
+   Claude Code cria a Edge Function, as tabelas, o componente React
    Configurar Z-API, variáveis de ambiente, fazer go-live
           ↓
 
@@ -94,28 +94,114 @@ projetos/
 ### Passo 5 — Implementar com Claude Code
 
 Abra o Claude Code no projeto do cliente e cole o "Prompt para Claude Code" que foi gerado dentro do guia de implementação. Ele vai criar:
-- A rota do webhook
+- A Supabase Edge Function (webhook)
 - As tabelas no banco de dados
 - O componente React de atendimento
 
 ### Passo 6 — Configurar Z-API
 
 No painel Z-API:
-1. Conectar o número via QRCode
-2. Ir em "Webhooks e configurações gerais"
-3. Colar a URL do webhook no campo "Ao receber"
-4. Salvar
 
-### Passo 7 — Testar
+**6.1 — Conectar o número**
+1. Criar a instância
+2. Conectar via QRCode
 
-Antes de liberar para clientes:
-1. Testar com Postman enviando mensagens simuladas
-2. Testar com seu próprio WhatsApp
-3. Verificar se as conversas estão aparecendo no Supabase
-4. Verificar se o rate limiting está funcionando
-5. Verificar se a escalada para humano está funcionando
+**6.2 — Configurar webhook de recebimento**
+1. Ir em "Webhooks e configurações gerais"
+2. Colar a URL da Edge Function no campo "Ao receber":
+   ```
+   https://[seu-projeto].supabase.co/functions/v1/whatsapp-webhook
+   ```
+3. Salvar
 
-### Passo 8 — Go-live
+**6.3 — Gerar o Client-Token (obrigatório)**
+
+> ⚠️ Este passo é frequentemente esquecido e causa falha silenciosa no envio de mensagens.
+
+1. No painel Z-API, acessar a aba **Segurança**
+2. Localizar o módulo **"Token de Segurança da Conta"**
+3. Clicar em **"Configurar Agora"** — isso gera o token
+4. Copiar o token gerado
+5. Clicar em **"Ativar Token"**
+
+A partir desse momento, **todas as chamadas à API da Z-API precisam incluir o header `Client-Token`**. Sem ele, a Z-API retorna 403.
+
+> **Importante:** O Client-Token da conta é **diferente** do token da instância que aparece na URL. São duas credenciais separadas.
+
+### Passo 7 — Configurar variáveis de ambiente
+
+**No arquivo `.env` do projeto (nunca commitar):**
+```env
+# Z-API — apenas server-side, nunca expor no frontend
+ZAPI_INSTANCE_ID=sua_instancia_id
+ZAPI_TOKEN=seu_token_da_instancia
+ZAPI_SECURITY_TOKEN=seu_client_token_gerado_na_aba_seguranca
+```
+
+**Nos secrets da Supabase Edge Function:**
+
+> ⚠️ As Edge Functions NÃO leem o `.env` do projeto. Os secrets precisam ser configurados separadamente no Supabase Dashboard.
+
+1. Acessar: Supabase Dashboard → Edge Functions → [sua função] → Secrets
+2. Adicionar **cada variável** manualmente:
+   - `ZAPI_INSTANCE_ID`
+   - `ZAPI_TOKEN`
+   - `ZAPI_SECURITY_TOKEN`
+   - `GEMINI_API_KEY`
+
+Ou via Supabase Management API (para automação):
+```bash
+curl -X POST "https://api.supabase.com/v1/projects/[project-ref]/secrets" \
+  -H "Authorization: Bearer [seu-pat]" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"name": "ZAPI_INSTANCE_ID", "value": "..."},
+    {"name": "ZAPI_TOKEN", "value": "..."},
+    {"name": "ZAPI_SECURITY_TOKEN", "value": "..."},
+    {"name": "GEMINI_API_KEY", "value": "..."}
+  ]'
+```
+
+### Passo 8 — Testar
+
+**Teste de envio (Z-API send-text):**
+```bash
+curl -X POST "https://api.z-api.io/instances/[ID]/token/[TOKEN]/send-text" \
+  -H "Content-Type: application/json" \
+  -H "Client-Token: [SEU_CLIENT_TOKEN]" \
+  -d '{"phone": "5511999999999", "message": "Teste"}'
+```
+Deve retornar `{"zaapId":"...","messageId":"..."}`.
+
+**Teste do webhook com payload real da Z-API:**
+```bash
+curl -X POST "https://[projeto].supabase.co/functions/v1/whatsapp-webhook" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "type": "ReceivedCallback",
+    "phone": "5511999999999",
+    "text": {"message": "Olá, como funciona?"},
+    "senderName": "Teste",
+    "fromMe": false,
+    "isGroup": false,
+    "isNewsletter": false
+  }'
+```
+
+> ⚠️ O campo da mensagem é `text.message`, **não** `body`. Usar `body` faz a função ignorar todas as mensagens reais.
+
+**Verificar no banco:**
+- Checar tabela `whatsapp_conversas` — deve ter criado uma linha
+- Checar tabela `whatsapp_mensagens` — deve ter user + agent
+- Verificar no WhatsApp real se a resposta chegou
+
+**Verificar rate limiting:**
+- Enviar 6 mensagens seguidas — a 6ª deve retornar aviso
+
+**Verificar escalada:**
+- Enviar "quero falar com um humano" — status deve virar `escalado`
+
+### Passo 9 — Go-live
 
 Liberar o número para os clientes.
 
@@ -129,10 +215,9 @@ Sempre que quiser melhorar o agente após o go-live:
 2. Cole o conteúdo de `03_prompt_atualizacao.md`
 3. Informe o que quer atualizar
 4. O Claude vai gerar os trechos atualizados
-5. Substitua nos arquivos correspondentes
-6. O agente já usa as novas regras na próxima mensagem recebida
+5. No painel do app → aba "Configurar Agente" → editar System Prompt e/ou Base de Conhecimento → Salvar
 
-> Não é necessário redeploy para atualizar o agente, pois o backend lê os arquivos `.md` a cada requisição.
+> Não é necessário redeploy para atualizar comportamento do agente. O backend lê os valores da tabela `whatsapp_config` a cada mensagem recebida.
 
 ---
 
@@ -150,13 +235,27 @@ Sempre que quiser melhorar o agente após o go-live:
 
 **Sobre segurança:**
 - Nunca coloque senhas ou dados sensíveis nos arquivos `.md`
-- Não exponha Instance ID e Token da Z-API no frontend
+- Nunca exponha Instance ID, Token e Client-Token no frontend
+- O `ZAPI_SECURITY_TOKEN` do `.env` **não** tem prefixo `VITE_` — é server-side
 - Monitore os logs de conversa semanalmente
 
 **Sobre custos:**
-- Gemini 1.5 Flash: gratuito até 50 req/min, depois ~$0.075/1M tokens
-- Com rate limiting de 5 msg/min por usuário, o custo é negligenciável no MVP
+- Gemini 2.5 Flash: tier gratuito generoso para MVPs
+- Com rate limiting de 5 msg/min por usuário, o custo é negligenciável no início
 - Monitore consumo mensalmente no Google AI Studio
+
+---
+
+## Erros Comuns e Soluções
+
+| Erro | Causa provável | Solução |
+|------|---------------|---------|
+| Mensagens chegam mas agente não responde | Campo `body` ao invés de `text.message` | Ler `payload.text.message` |
+| Z-API retorna 403 | Client-Token ausente ou errado | Incluir `Client-Token` header nas chamadas |
+| Edge Function retorna `BOOT_ERROR` | Import de esm.sh falhando | Usar fetch nativo na REST API do Supabase |
+| Gemini retorna 404 | Modelo descontinuado | Usar `gemini-2.5-flash` |
+| Secrets não disponíveis na Edge Function | Configurados só no `.env` | Adicionar nos secrets do Supabase Dashboard |
+| Todas mensagens ignoradas | Filtro incorreto no payload | Verificar campos `type`, `fromMe`, `isGroup`, `text.message` |
 
 ---
 
@@ -204,3 +303,4 @@ agente-framework/
 | Versão | Data | O que mudou |
 |--------|------|-------------|
 | 1.0 | Maio 2026 | Versão inicial do framework |
+| 2.0 | Maio 2026 | Corrige payload Z-API (`text.message`), Client-Token, modelo Gemini 2.5 Flash, secrets Supabase, tabela de erros comuns |
