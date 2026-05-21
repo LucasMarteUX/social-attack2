@@ -19,6 +19,7 @@ const DB_HEADERS = {
 }
 
 const ESCALATION_KEYWORDS = ['humano', 'atendente', 'falar com alguém', 'reclamação', 'reembolso', 'cancelar', 'não consigo', 'bug', 'cobrança']
+const SALE_CONFIRMED_KEYWORDS = ['quero contratar', 'vou assinar', 'pode me mandar o link', 'como faço pra assinar', 'quero me cadastrar', 'fechar o plano', 'quero o pro', 'quero o plano', 'vou pagar', 'manda o pix', 'manda o link', 'como eu pago']
 
 // ---------- helpers REST ----------
 
@@ -78,7 +79,6 @@ Deno.serve(async (req: Request) => {
   }
 
   // Ignora: enviado por mim, grupos, não-texto, sem telefone
-  // Z-API envia texto em payload.text.message (não payload.body)
   const textObj = payload.text as Record<string, unknown> | undefined
   const textoRaw = typeof textObj?.message === 'string' ? textObj.message : null
 
@@ -137,20 +137,30 @@ Deno.serve(async (req: Request) => {
   // ---------- Conversa ----------
   const conversasData: Record<string, unknown>[] = await dbSelect('whatsapp_conversas', {
     'telefone': `eq.${telefone}`,
-    'select': 'id,status,total_mensagens',
+    'select': 'id,status,total_mensagens,onboarding_completo,tipo_contato,etapa_pipeline,human_request_count,label',
   })
   const conversaExistente = conversasData[0] ?? null
-  const primeiroContato = !conversaExistente
-  let conversa: { id: string; status: string; total_mensagens: number }
+  let conversa: {
+    id: string
+    status: string
+    total_mensagens: number
+    onboarding_completo: boolean
+    tipo_contato: string | null
+    etapa_pipeline: string | null
+    human_request_count: number
+    label: string | null
+  }
 
   if (conversaExistente) {
-    conversa = conversaExistente as { id: string; status: string; total_mensagens: number }
+    conversa = conversaExistente as typeof conversa
   } else {
     const nova = await dbInsert('whatsapp_conversas', {
       telefone,
       nome_contato: nomeContato,
       status: 'ativo',
       total_mensagens: 0,
+      onboarding_completo: false,
+      human_request_count: 0,
     })
     if (!nova || nova.length === 0) {
       console.error('Erro ao criar conversa')
@@ -167,6 +177,89 @@ Deno.serve(async (req: Request) => {
   // Salva mensagem do usuário
   await dbInsert('whatsapp_mensagens', { conversa_id: conversa.id, role: 'user', conteudo: texto })
 
+  // ---------- Onboarding ----------
+  // Se o onboarding ainda não foi concluído, enviar menu de opções
+  if (!conversa.onboarding_completo) {
+    const textoNorm = texto.trim()
+
+    // Usuário respondeu ao menu (1, 2 ou 3)
+    if (['1', '2', '3'].includes(textoNorm)) {
+      let tipoContato: string
+      let etapaPipeline: string | null = null
+      let respostaOnboarding: string
+
+      if (textoNorm === '1') {
+        tipoContato = 'duvida'
+        respostaOnboarding = 'Ótimo! Me conta qual é a sua dúvida sobre o Social Attack 😊'
+      } else if (textoNorm === '2') {
+        tipoContato = 'venda'
+        etapaPipeline = 'lead'
+        respostaOnboarding = 'Que ótimo! Vou te apresentar os nossos planos.\n\nTemos três opções:\n\n🆓 *Gratuito* — 5 criativos/mês, sem geração de imagens\n⚡ *Pro* — R$ 79/mês — criativos ilimitados + geração de imagens (14 dias grátis!)\n🏢 *Agência* — R$ 199/mês — múltiplos clientes + suporte dedicado\n\nQual opção te interessou mais?'
+      } else {
+        tipoContato = 'duvida'
+        respostaOnboarding = 'Perfeito! Pode me contar o que está acontecendo que eu te ajudo 🙌'
+      }
+
+      await dbUpdate('whatsapp_conversas', { id: conversa.id }, {
+        onboarding_completo: true,
+        tipo_contato: tipoContato,
+        etapa_pipeline: etapaPipeline,
+        ultima_mensagem_at: agora.toISOString(),
+        total_mensagens: conversa.total_mensagens + 2,
+        ...(nomeContato && !conversaExistente ? { nome_contato: nomeContato } : {}),
+      })
+
+      await dbInsert('whatsapp_mensagens', { conversa_id: conversa.id, role: 'agent', conteudo: respostaOnboarding })
+      await enviarMensagem(telefone, respostaOnboarding)
+      return new Response('ok', { status: 200 })
+    }
+
+    // Primeira mensagem ou resposta inválida ao menu — enviar/reenviar menu
+    const configsMenu: Record<string, unknown>[] = await dbSelect('whatsapp_config', {
+      'chave': 'eq.onboarding_menu',
+      'select': 'valor',
+    })
+    const menuTexto = configsMenu[0]
+      ? String(configsMenu[0].valor)
+      : 'Oi! Sou o Spark, assistente do Social Attack 👋\n\nComo posso te ajudar?\n\n1️⃣ Tenho uma dúvida sobre a plataforma\n2️⃣ Quero conhecer os planos e contratar\n3️⃣ Já sou cliente e preciso de suporte\n\nResponde com 1, 2 ou 3!'
+
+    await dbUpdate('whatsapp_conversas', { id: conversa.id }, {
+      ultima_mensagem_at: agora.toISOString(),
+      total_mensagens: conversa.total_mensagens + 2,
+      ...(nomeContato && !conversaExistente ? { nome_contato: nomeContato } : {}),
+    })
+
+    await dbInsert('whatsapp_mensagens', { conversa_id: conversa.id, role: 'agent', conteudo: menuTexto })
+    await enviarMensagem(telefone, menuTexto)
+    return new Response('ok', { status: 200 })
+  }
+
+  // ---------- Detecção de pedido de humano ----------
+  const textoLower = texto.toLowerCase()
+  const pedindoHumano = ESCALATION_KEYWORDS.some((kw) => textoLower.includes(kw))
+  let humanRequestCount = conversa.human_request_count
+
+  if (pedindoHumano) {
+    humanRequestCount += 1
+
+    if (humanRequestCount >= 2) {
+      // Segunda solicitação → escala imediata + label
+      await dbUpdate('whatsapp_conversas', { id: conversa.id }, {
+        status: 'escalado',
+        label: 'PRECISA_ATENDIMENTO_HUMANO',
+        human_request_count: humanRequestCount,
+        ultima_mensagem_at: agora.toISOString(),
+      })
+      const msgEscalada = 'Entendido! Vou acionar nosso time de atendimento agora. Um humano entrará em contato assim que possível (Seg–Sex 9h–18h | Sáb 9h–13h). Obrigado pela paciência! 🙏'
+      await dbInsert('whatsapp_mensagens', { conversa_id: conversa.id, role: 'agent', conteudo: msgEscalada })
+      await enviarMensagem(telefone, msgEscalada)
+      return new Response('escalated', { status: 200 })
+    }
+
+    // Primeira solicitação → informa horário mas continua tentando
+    await dbUpdate('whatsapp_conversas', { id: conversa.id }, { human_request_count: humanRequestCount })
+  }
+
   // ---------- Histórico ----------
   const historico: Record<string, unknown>[] = await dbSelect('whatsapp_mensagens', {
     'conversa_id': `eq.${conversa.id}`,
@@ -176,7 +269,7 @@ Deno.serve(async (req: Request) => {
   })
   const historicoTexto = historico
     .reverse()
-    .map((m) => `${m.role === 'user' ? 'Usuário' : 'Attack'}: ${m.conteudo}`)
+    .map((m) => `${m.role === 'user' ? 'Usuário' : 'Spark'}: ${m.conteudo}`)
     .join('\n')
 
   // ---------- Config ----------
@@ -187,9 +280,14 @@ Deno.serve(async (req: Request) => {
   const configMap: Record<string, string> = {}
   for (const c of configsData) configMap[String(c.chave)] = String(c.valor)
 
-  const systemPrompt = (configMap['system_prompt'] ?? 'Você é o Attack, assistente do Social Attack. Responda de forma direta, jovem e informal.')
+  const systemPrompt = (configMap['system_prompt'] ?? 'Você é Spark, assistente do Social Attack. Responda de forma direta, jovem e informal.')
     .replace('{{BASE_DE_CONHECIMENTO}}', configMap['base_conhecimento'] ?? '')
     .replace('{{HISTORICO_CONVERSA}}', historicoTexto)
+
+  // Contexto extra para leads em processo de venda
+  const contextoVenda = conversa.tipo_contato === 'venda'
+    ? '\n\nCONTEXTO: Este usuário está interessado em contratar o Social Attack. Foque em apresentar os benefícios dos planos Pro e Agência, tire dúvidas sobre preços e incentive o próximo passo (cadastro para teste grátis de 14 dias).'
+    : ''
 
   // ---------- Gemini ----------
   let respostaAgente = 'Algo deu errado por aqui. Tenta de novo em alguns segundos.'
@@ -199,9 +297,9 @@ Deno.serve(async (req: Request) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
+        system_instruction: { parts: [{ text: systemPrompt + contextoVenda }] },
         contents: [{ role: 'user', parts: [{ text: texto }] }],
-        generationConfig: { maxOutputTokens: 300, temperature: 0.7 },
+        generationConfig: { maxOutputTokens: 350, temperature: 0.7 },
       }),
     })
     const geminiData = await geminiRes.json()
@@ -211,26 +309,29 @@ Deno.serve(async (req: Request) => {
     console.error('Gemini error:', e)
   }
 
-  // ---------- Escalação ----------
-  const textoEscalacao = (texto + ' ' + respostaAgente).toLowerCase()
-  const deveEscalar = ESCALATION_KEYWORDS.some((kw) => textoEscalacao.includes(kw))
+  // ---------- Pipeline — detecção automática de venda fechada ----------
+  if (conversa.tipo_contato === 'venda' && conversa.etapa_pipeline !== 'fechado') {
+    const textoVenda = textoLower
+    const vendaConfirmada = SALE_CONFIRMED_KEYWORDS.some((kw) => textoVenda.includes(kw))
 
-  if (deveEscalar) {
-    await dbUpdate('whatsapp_conversas', { id: conversa.id }, { status: 'escalado', ultima_mensagem_at: agora.toISOString() })
-    respostaAgente = 'Entendi. Vou chamar alguém da equipe pra te ajudar. Seg–Sex das 9h às 18h, respondemos em até 2h ⚡'
-  } else {
-    await dbUpdate('whatsapp_conversas', { id: conversa.id }, {
-      ultima_mensagem_at: agora.toISOString(),
-      total_mensagens: conversa.total_mensagens + 2,
-      ...(nomeContato && !conversaExistente ? { nome_contato: nomeContato } : {}),
-    })
+    if (vendaConfirmada) {
+      await dbUpdate('whatsapp_conversas', { id: conversa.id }, { etapa_pipeline: 'fechado' })
+    } else if (conversa.etapa_pipeline === 'lead') {
+      // Se já houve mais de 3 trocas de mensagens no fluxo de venda, avança para em_andamento
+      if (conversa.total_mensagens >= 6) {
+        await dbUpdate('whatsapp_conversas', { id: conversa.id }, { etapa_pipeline: 'em_andamento' })
+      }
+    }
   }
+
+  // ---------- Atualiza conversa ----------
+  await dbUpdate('whatsapp_conversas', { id: conversa.id }, {
+    ultima_mensagem_at: agora.toISOString(),
+    total_mensagens: conversa.total_mensagens + 2,
+    ...(nomeContato && !conversaExistente ? { nome_contato: nomeContato } : {}),
+  })
 
   await dbInsert('whatsapp_mensagens', { conversa_id: conversa.id, role: 'agent', conteudo: respostaAgente })
-
-  if (primeiroContato) {
-    await enviarMensagem(telefone, 'Oi! 👋 Sou o Attack, assistente do Social Attack. Como posso te ajudar?')
-  }
   await enviarMensagem(telefone, respostaAgente)
 
   return new Response('ok', { status: 200 })
