@@ -70,10 +70,11 @@ Deno.serve(async (req: Request) => {
 
   if (req.method !== 'POST') return new Response('ok', { status: 200 })
 
-  // Valida security token (se configurado)
+  // Valida security token (se configurado e se Z-API enviou o header)
   if (ZAPI_SECURITY_TOKEN) {
-    const incoming = req.headers.get('client-token') ?? ''
-    if (incoming !== ZAPI_SECURITY_TOKEN) {
+    const incoming = req.headers.get('client-token')
+    if (incoming !== null && incoming !== ZAPI_SECURITY_TOKEN) {
+      console.warn('Security token inválido:', incoming)
       return new Response('unauthorized', { status: 401 })
     }
   }
@@ -240,11 +241,18 @@ Deno.serve(async (req: Request) => {
 
 async function enviarMensagem(telefone: string, mensagem: string) {
   try {
-    await fetch(`${ZAPI_BASE}/send-text`, {
+    const res = await fetch(`${ZAPI_BASE}/send-text`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Client-Token': ZAPI_TOKEN,
+      },
       body: JSON.stringify({ phone: telefone, message: mensagem }),
     })
+    if (!res.ok) {
+      const body = await res.text()
+      console.error('Z-API send-text erro:', res.status, body)
+    }
   } catch (e) {
     console.error('Erro Z-API:', e)
   }
