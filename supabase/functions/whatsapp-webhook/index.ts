@@ -70,15 +70,6 @@ Deno.serve(async (req: Request) => {
 
   if (req.method !== 'POST') return new Response('ok', { status: 200 })
 
-  // Valida security token (se configurado e se Z-API enviou o header)
-  if (ZAPI_SECURITY_TOKEN) {
-    const incoming = req.headers.get('client-token')
-    if (incoming !== null && incoming !== ZAPI_SECURITY_TOKEN) {
-      console.warn('Security token inválido:', incoming)
-      return new Response('unauthorized', { status: 401 })
-    }
-  }
-
   let payload: Record<string, unknown>
   try {
     payload = await req.json()
@@ -86,18 +77,24 @@ Deno.serve(async (req: Request) => {
     return new Response('bad request', { status: 400 })
   }
 
+  // Ignora: enviado por mim, grupos, não-texto, sem telefone
+  // Z-API envia texto em payload.text.message (não payload.body)
+  const textObj = payload.text as Record<string, unknown> | undefined
+  const textoRaw = typeof textObj?.message === 'string' ? textObj.message : null
+
   if (
     payload.fromMe === true ||
     payload.isGroup === true ||
+    payload.isNewsletter === true ||
     payload.type !== 'ReceivedCallback' ||
-    typeof payload.body !== 'string' ||
+    !textoRaw ||
     !payload.phone
   ) {
     return new Response('ignored', { status: 200 })
   }
 
   const telefone = String(payload.phone)
-  const texto = String(payload.body).trim().slice(0, 1000)
+  const texto = textoRaw.trim().slice(0, 1000)
   const nomeContato = typeof payload.senderName === 'string' ? payload.senderName : null
   const agora = new Date()
 
@@ -245,13 +242,13 @@ async function enviarMensagem(telefone: string, mensagem: string) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Client-Token': ZAPI_TOKEN,
+        'Client-Token': ZAPI_SECURITY_TOKEN,
       },
       body: JSON.stringify({ phone: telefone, message: mensagem }),
     })
     if (!res.ok) {
-      const body = await res.text()
-      console.error('Z-API send-text erro:', res.status, body)
+      const errBody = await res.text()
+      console.error('Z-API send-text erro:', res.status, errBody)
     }
   } catch (e) {
     console.error('Erro Z-API:', e)
