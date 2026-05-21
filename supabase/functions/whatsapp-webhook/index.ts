@@ -5,6 +5,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 const ZAPI_INSTANCE_ID = Deno.env.get('ZAPI_INSTANCE_ID') ?? ''
 const ZAPI_TOKEN = Deno.env.get('ZAPI_TOKEN') ?? ''
+const ZAPI_SECURITY_TOKEN = Deno.env.get('ZAPI_SECURITY_TOKEN') ?? ''
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') ?? ''
 
 const ZAPI_BASE = `https://api.z-api.io/instances/${ZAPI_INSTANCE_ID}/token/${ZAPI_TOKEN}`
@@ -68,6 +69,14 @@ Deno.serve(async (req: Request) => {
   }
 
   if (req.method !== 'POST') return new Response('ok', { status: 200 })
+
+  // Valida security token (se configurado)
+  if (ZAPI_SECURITY_TOKEN) {
+    const incoming = req.headers.get('client-token') ?? ''
+    if (incoming !== ZAPI_SECURITY_TOKEN) {
+      return new Response('unauthorized', { status: 401 })
+    }
+  }
 
   let payload: Record<string, unknown>
   try {
