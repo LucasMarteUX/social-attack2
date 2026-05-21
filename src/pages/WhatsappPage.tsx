@@ -197,26 +197,24 @@ export default function WhatsappPage() {
         </div>
 
         {/* Stats */}
-        {!loading && (
-          <div className="grid grid-cols-4 gap-3">
-            {[
-              { label: 'Conversas', value: conversas.length, icon: <MessageCircle size={16} /> },
-              { label: 'Ativas', value: ativas, icon: <CheckCheck size={16} /> },
-              { label: 'Escaladas', value: escaladas, icon: <AlertCircle size={16} /> },
-              { label: 'Leads de venda', value: leads, icon: <TrendingUp size={16} /> },
-            ].map((s) => (
-              <div key={s.label} className="bg-surface border border-line/[0.08] rounded-2xl p-4 flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-line/[0.06] flex items-center justify-center text-ink-muted">
-                  {s.icon}
-                </div>
-                <div>
-                  <p className="text-heading-sm font-bold text-ink">{s.value}</p>
-                  <p className="text-[11px] text-ink-faint">{s.label}</p>
-                </div>
+        <div className="grid grid-cols-4 gap-3">
+          {[
+            { label: 'Conversas', value: conversas.length, icon: <MessageCircle size={16} /> },
+            { label: 'Ativas', value: ativas, icon: <CheckCheck size={16} /> },
+            { label: 'Escaladas', value: escaladas, icon: <AlertCircle size={16} /> },
+            { label: 'Leads de venda', value: leads, icon: <TrendingUp size={16} /> },
+          ].map((s) => (
+            <div key={s.label} className="bg-surface border border-line/[0.08] rounded-2xl p-4 flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-line/[0.06] flex items-center justify-center text-ink-muted">
+                {s.icon}
               </div>
-            ))}
-          </div>
-        )}
+              <div>
+                <p className="text-heading-sm font-bold text-ink">{s.value}</p>
+                <p className="text-[11px] text-ink-faint">{s.label}</p>
+              </div>
+            </div>
+          ))}
+        </div>
 
         {/* Alerta de atenção humana */}
         {precisamAtendimento > 0 && (
@@ -258,7 +256,7 @@ export default function WhatsappPage() {
         {/* Tab Conversas */}
         {tab === 'conversas' && (
           <div className="flex-1 min-h-0">
-            {loading ? (
+            {loading && conversas.length === 0 ? (
               <div className="flex justify-center py-20"><Spinner size="lg" /></div>
             ) : conversas.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
@@ -307,7 +305,7 @@ export default function WhatsappPage() {
         {/* Tab Pipeline */}
         {tab === 'pipeline' && (
           <div className="flex-1 min-h-0">
-            {loading ? (
+            {loading && conversasVenda.length === 0 ? (
               <div className="flex justify-center py-20"><Spinner size="lg" /></div>
             ) : conversasVenda.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
