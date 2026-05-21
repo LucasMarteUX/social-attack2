@@ -10,6 +10,7 @@ import {
   Layers,
   LogOut,
   Plus,
+  MessageCircle,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import NavItem from './NavItem'
@@ -81,6 +82,7 @@ export default function Sidebar({ onNavClick }: SidebarProps) {
         </p>
         <NavItem to="/agenda" icon={<CalendarDays {...iconProps} />} label="Agenda" onClick={onNavClick} />
         <NavItem to="/todos" icon={<CheckSquare {...iconProps} />} label="To-Do" onClick={onNavClick} />
+        <NavItem to="/whatsapp" icon={<MessageCircle {...iconProps} />} label="WhatsApp" onClick={onNavClick} />
       </nav>
 
       <div className="mt-auto border-t border-line/[0.06] pt-4 flex items-center gap-2 px-1">

@@ -14,6 +14,7 @@ import TomDeVozPage from './pages/TomDeVozPage'
 import WorkspacesPage from './pages/WorkspacesPage'
 import WorkspacePage from './pages/WorkspacePage'
 import DesignSystemsPage from './pages/DesignSystemsPage'
+import WhatsappPage from './pages/WhatsappPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
           { path: 'tom-de-voz', element: <TomDeVozPage /> },
           { path: 'agenda', element: <AgendaPage /> },
           { path: 'todos', element: <TodosPage /> },
+          { path: 'whatsapp', element: <WhatsappPage /> },
         ],
       },
     ],
