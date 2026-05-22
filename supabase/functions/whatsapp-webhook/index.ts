@@ -57,6 +57,18 @@ async function dbUpsert(table: string, data: Record<string, unknown>) {
   return res.json()
 }
 
+async function dbDelete(table: string, filter: Record<string, string>) {
+  const qs = Object.entries(filter).map(([k, v]) => `${k}=eq.${encodeURIComponent(v)}`).join('&')
+  const res = await fetch(`${REST}/${table}?${qs}`, {
+    method: 'DELETE',
+    headers: DB_HEADERS,
+  })
+  if (!res.ok) {
+    const txt = await res.text()
+    console.error('DELETE', table, res.status, txt)
+  }
+}
+
 // ---------- entry point ----------
 
 Deno.serve(async (req: Request) => {
@@ -174,20 +186,58 @@ Deno.serve(async (req: Request) => {
     conversa = nova[0]
     novaConversaCriada = true
   } else if (ultima.status === 'encerrado') {
-    const nova = await dbInsert('whatsapp_conversas', {
+    const dadosNovaLinha = {
       telefone,
       nome_contato: nomeContato ?? ultima.nome_contato,
       status: 'ativo',
       total_mensagens: 0,
       onboarding_completo: false,
       human_request_count: 0,
-    }) as ConversaRow[]
-    if (!nova || nova.length === 0) {
-      console.error('Erro ao reabrir conversa após encerramento')
+    }
+    const rawNova = await dbInsert('whatsapp_conversas', dadosNovaLinha)
+
+    const sucessoNova = Array.isArray(rawNova) && (rawNova as ConversaRow[]).length > 0
+
+    type PgErr = { code?: string }
+    const erroIns = rawNova as PgErr | ConversaRow[]
+    const ehDuplicadoTelefone =
+      typeof rawNova === 'object' &&
+      rawNova !== null &&
+      !Array.isArray(rawNova) &&
+      (erroIns as PgErr).code === '23505'
+
+    if (sucessoNova) {
+      conversa = (rawNova as ConversaRow[])[0]
+      novaConversaCriada = true
+    } else if (ehDuplicadoTelefone) {
+      // Banco antigo com UNIQUE(telefone): mesma linha vira nova sessão Spark (histórico desta linha é apagado)
+      await dbDelete('whatsapp_mensagens', { conversa_id: ultima.id })
+      await dbUpdate('whatsapp_conversas', { id: ultima.id }, {
+        status: 'ativo',
+        onboarding_completo: false,
+        human_request_count: 0,
+        label: null,
+        tipo_contato: null,
+        etapa_pipeline: null,
+        total_mensagens: 0,
+        nome_contato: nomeContato ?? ultima.nome_contato,
+      })
+      conversa = {
+        ...ultima,
+        status: 'ativo',
+        onboarding_completo: false,
+        human_request_count: 0,
+        label: null,
+        tipo_contato: null,
+        etapa_pipeline: null,
+        total_mensagens: 0,
+        nome_contato: nomeContato ?? ultima.nome_contato,
+      }
+      novaConversaCriada = false
+    } else {
+      console.error('Erro ao criar conversa após encerramento', JSON.stringify(rawNova))
       return new Response('error', { status: 500 })
     }
-    conversa = nova[0]
-    novaConversaCriada = true
   } else {
     conversa = ultima
   }
