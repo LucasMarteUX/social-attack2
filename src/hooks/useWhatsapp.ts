@@ -30,6 +30,40 @@ export interface WhatsappConfig {
   updated_at: string
 }
 
+/** Z-API e webhook armazenam com DDI Brasil (55…) — normaliza apenas dígitos. */
+export function telefoneSomenteDigitosParaZApi(raw: string): string {
+  const head = (raw.split('@')[0] ?? raw).trim()
+  const d = head.replace(/\D/g, '')
+  if (!d) return ''
+  if (d.startsWith('55') && (d.length === 12 || d.length === 13)) return d
+  if (!d.startsWith('55') && d.length >= 10 && d.length <= 11) return `55${d}`
+  return d
+}
+
+async function dispararPainelParaWhatsApp(telefoneArmazenado: string, mensagem: string, delayTyping = 1) {
+  const telefone = telefoneSomenteDigitosParaZApi(telefoneArmazenado)
+  if (!telefone) throw new Error('Telefone da conversa inválido.')
+
+  const { data, error } = await supabase.functions.invoke('whatsapp-agent-send', {
+    body: { telefone, mensagem, delayTyping },
+  })
+
+  const msgFallback = error?.message?.trim()
+  if (msgFallback === 'Failed to send a request to the Edge Function' || msgFallback === 'FunctionsFetchError') {
+    throw new Error(
+      'Não foi possível contactar a função whatsapp-agent-send (rede ou CORS). Atualize a página e verifique no Supabase Dashboard se ela existe e está publicada.',
+    )
+  }
+  if (error) throw new Error(error.message ?? 'Erro ao chamar whatsapp-agent-send.')
+
+  type Resp = { ok?: boolean; error?: string }
+  const payload = data as Resp | null
+  if (payload && typeof payload === 'object' && payload.ok === false) {
+    const det = typeof payload.error === 'string' ? payload.error : 'Resposta da Z-API inválida'
+    throw new Error(det)
+  }
+}
+
 export function useWhatsapp() {
   const [conversas, setConversas] = useState<WhatsappConversa[]>([])
   const [configs, setConfigs] = useState<Record<string, string>>({})
@@ -95,7 +129,7 @@ export function useWhatsapp() {
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  async function mensagensDeConversa(conversaId: string): Promise<WhatsappMensagem[]> {
+  const mensagensDeConversa = useCallback(async (conversaId: string): Promise<WhatsappMensagem[]> => {
     const { data, error } = await supabase
       .from('whatsapp_mensagens')
       .select('*')
@@ -104,18 +138,19 @@ export function useWhatsapp() {
 
     if (error) throw new Error(error.message)
     return (data as WhatsappMensagem[]) ?? []
-  }
+  }, [])
 
-  function subscribeToMensagens(conversaId: string, onNova: (msg: WhatsappMensagem) => void) {
+  const subscribeToMensagens = useCallback((conversaId: string, onNova: (msg: WhatsappMensagem) => void) => {
     const channel = supabase
       .channel(`mensagens-${conversaId}`)
-      .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'whatsapp_mensagens',
-        filter: `conversa_id=eq.${conversaId}`,
-      }, (payload) => onNova(payload.new as WhatsappMensagem))
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'whatsapp_mensagens', filter: `conversa_id=eq.${conversaId}` },
+        (payload) => onNova(payload.new as WhatsappMensagem),
+      )
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }
+  }, [])
 
   async function atualizarConfig(chave: string, valor: string) {
     const { error } = await supabase
@@ -137,49 +172,78 @@ export function useWhatsapp() {
   }
 
   async function assumirAtendimento(conversaId: string, telefone: string, atendenteNome: string) {
-    const { error } = await supabase
-      .from('whatsapp_conversas')
-      .update({ status: 'manual' })
-      .eq('id', conversaId)
+    const { data: row, error: eRow } = await supabase.from('whatsapp_conversas').select('status').eq('id', conversaId).single()
+    if (eRow || !row) throw new Error(eRow?.message ?? 'Conversa não encontrada.')
+
+    const prevStatus = row.status as WhatsappConversa['status']
+
+    const { error } = await supabase.from('whatsapp_conversas').update({ status: 'manual' }).eq('id', conversaId)
     if (error) throw new Error(error.message)
 
-    await supabase.from('whatsapp_mensagens').insert({ conversa_id: conversaId, role: 'divider', conteudo: atendenteNome })
+    const { data: divRow, error: eDiv } = await supabase
+      .from('whatsapp_mensagens')
+      .insert({ conversa_id: conversaId, role: 'divider', conteudo: atendenteNome })
+      .select('id')
+      .single()
+    if (eDiv || !divRow?.id) {
+      await supabase.from('whatsapp_conversas').update({ status: prevStatus }).eq('id', conversaId)
+      throw new Error(eDiv?.message ?? 'Não foi possível registar o divisor na conversa.')
+    }
 
     const msgBemVindo = `Olá! A partir de agora você está falando com *${atendenteNome}*, da equipe Social Attack. Como posso te ajudar? 👋`
-    await supabase.from('whatsapp_mensagens').insert({ conversa_id: conversaId, role: 'humano', conteudo: msgBemVindo })
-    await supabase.from('whatsapp_conversas').update({ ultima_mensagem_at: new Date().toISOString() }).eq('id', conversaId)
 
-    await supabase.functions.invoke('whatsapp-agent-send', {
-      body: { telefone, mensagem: msgBemVindo, delayTyping: 2 },
-    })
+    try {
+      await dispararPainelParaWhatsApp(telefone, msgBemVindo, 2)
+    } catch (e) {
+      await supabase.from('whatsapp_mensagens').delete().eq('id', divRow.id)
+      await supabase.from('whatsapp_conversas').update({ status: prevStatus }).eq('id', conversaId)
+      throw e
+    }
+
+    const agora = new Date().toISOString()
+    await supabase.from('whatsapp_mensagens').insert({ conversa_id: conversaId, role: 'humano', conteudo: msgBemVindo })
+    await supabase.from('whatsapp_conversas').update({ ultima_mensagem_at: agora }).eq('id', conversaId)
 
     setConversas((prev) => prev.map((c) => c.id === conversaId ? { ...c, status: 'manual' } : c))
   }
 
   async function enviarMensagemHumana(conversaId: string, telefone: string, mensagem: string) {
-    await supabase.from('whatsapp_mensagens').insert({ conversa_id: conversaId, role: 'humano', conteudo: mensagem })
+    const { data: inserida, error: eIns } = await supabase
+      .from('whatsapp_mensagens')
+      .insert({ conversa_id: conversaId, role: 'humano', conteudo: mensagem })
+      .select('id')
+      .single()
+    if (eIns || !inserida?.id) throw new Error(eIns?.message ?? 'Falha ao gravar mensagem.')
+
+    try {
+      await dispararPainelParaWhatsApp(telefone, mensagem, 1)
+    } catch (e) {
+      await supabase.from('whatsapp_mensagens').delete().eq('id', inserida.id)
+      throw e
+    }
+
     await supabase.from('whatsapp_conversas').update({ ultima_mensagem_at: new Date().toISOString() }).eq('id', conversaId)
-    await supabase.functions.invoke('whatsapp-agent-send', { body: { telefone, mensagem, delayTyping: 1 } })
   }
 
   async function voltarParaAutomatico(conversaId: string, telefone: string) {
     const msg = 'O assistente virtual *Spark* volta a te atender por aqui. Pode perguntar o que precisar! 👋'
+    await dispararPainelParaWhatsApp(telefone, msg, 1)
     await supabase.from('whatsapp_mensagens').insert({ conversa_id: conversaId, role: 'agent', conteudo: msg })
     const { error } = await supabase.from('whatsapp_conversas').update({
       status: 'ativo',
       ultima_mensagem_at: new Date().toISOString(),
     }).eq('id', conversaId)
     if (error) throw new Error(error.message)
-    await supabase.functions.invoke('whatsapp-agent-send', { body: { telefone, mensagem: msg, delayTyping: 1 } })
     setConversas((prev) => prev.map((c) => c.id === conversaId ? { ...c, status: 'ativo' } : c))
   }
 
   async function encerrarConversaManual(conversaId: string, telefone: string) {
     const msgEncerramento =
       'Atendimento encerrado por aqui. Quando precisar de novo, é só nos mandar *uma nova mensagem* por este WhatsApp — o Spark (IA) volta a te atender do início. Até mais! 😊'
+    await dispararPainelParaWhatsApp(telefone, msgEncerramento, 1)
+
     await supabase.from('whatsapp_mensagens').insert({ conversa_id: conversaId, role: 'humano', conteudo: msgEncerramento })
     await supabase.from('whatsapp_conversas').update({ status: 'encerrado', ultima_mensagem_at: new Date().toISOString() }).eq('id', conversaId)
-    await supabase.functions.invoke('whatsapp-agent-send', { body: { telefone, mensagem: msgEncerramento, delayTyping: 1 } })
     setConversas((prev) => prev.map((c) => c.id === conversaId ? { ...c, status: 'encerrado' } : c))
   }
 

@@ -182,10 +182,13 @@ export default function WhatsappPage() {
   async function encerrarConversa(c: WhatsappConversa) {
     try {
       await encerrarConversaManual(c.id, c.telefone)
-      if (conversaAberta?.id === c.id) setConversaAberta({ ...c, status: 'encerrado' })
+      if (conversaAberta?.id === c.id) {
+        setConversaAberta({ ...c, status: 'encerrado' })
+        setMensagens(await mensagensDeConversa(c.id))
+      }
       toast.success('Cliente avisado no WhatsApp. Novo contato reabre o fluxo com a IA.')
-    } catch {
-      toast.error('Erro ao encerrar conversa.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao encerrar conversa.')
     }
   }
 
@@ -196,11 +199,10 @@ export default function WhatsappPage() {
     try {
       await assumirAtendimento(conversaAberta.id, conversaAberta.telefone, nome)
       setConversaAberta({ ...conversaAberta, status: 'manual' })
-      const msgs = await mensagensDeConversa(conversaAberta.id)
-      setMensagens(msgs)
+      setMensagens(await mensagensDeConversa(conversaAberta.id))
       toast.success(`Atendimento humano iniciado (${nome}).`)
-    } catch {
-      toast.error('Não foi possível assumir o atendimento.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Não foi possível assumir o atendimento.')
     } finally {
       setAssumindo(false)
     }
@@ -214,8 +216,9 @@ export default function WhatsappPage() {
     try {
       await enviarMensagemHumana(conversaAberta.id, conversaAberta.telefone, t)
       setRascunhoMsg('')
-    } catch {
-      toast.error('Falha ao enviar a mensagem.')
+      setMensagens(await mensagensDeConversa(conversaAberta.id))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao enviar a mensagem.')
     } finally {
       setEnviandoMsg(false)
     }
@@ -226,9 +229,10 @@ export default function WhatsappPage() {
     try {
       await voltarParaAutomatico(conversaAberta.id, conversaAberta.telefone)
       setConversaAberta({ ...conversaAberta, status: 'ativo' })
+      setMensagens(await mensagensDeConversa(conversaAberta.id))
       toast.success('Spark voltou a responder automaticamente.')
-    } catch {
-      toast.error('Não foi possível reativar o agente.')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Não foi possível reativar o agente.')
     }
   }
 
@@ -259,14 +263,45 @@ export default function WhatsappPage() {
 
   const temAlteracoes = editSystemPrompt !== null || editBaseConhecimento !== null
 
-  // Realtime — novas mensagens na conversa aberta chegam sem refresh
+  // Mescla mensagens vindas da API mantendo ordenação estável pelo id (evita “piscar”).
+  function mesclarMensagens(anteriores: WhatsappMensagem[], seguintes: WhatsappMensagem[]) {
+    const map = new Map<string, WhatsappMensagem>()
+    for (const m of seguintes) map.set(m.id, m)
+    for (const m of anteriores) {
+      if (!map.has(m.id)) map.set(m.id, m)
+    }
+    return [...map.values()].sort((a, b) => a.created_at.localeCompare(b.created_at))
+  }
+
+  // Realtime + sincronização periódica (fallback quando a publicação Realtime não recebe INSERT)
   useEffect(() => {
-    if (!conversaAberta) return
-    const unsub = subscribeToMensagens(conversaAberta.id, (nova) => {
-      setMensagens((prev) => prev.some((m) => m.id === nova.id) ? prev : [...prev, nova])
+    const id = conversaAberta?.id
+    if (!id) return
+    let cancel = false
+
+    async function sincronizar() {
+      try {
+        const atual = await mensagensDeConversa(id)
+        if (cancel) return
+        setMensagens((prev) => mesclarMensagens(prev, atual))
+      } catch {
+        //
+      }
+    }
+
+    const unsub = subscribeToMensagens(id, (nova) => {
+      setMensagens((prev) => (prev.some((m) => m.id === nova.id) ? prev : [...prev, nova]))
     })
-    return unsub
-  }, [conversaAberta?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+    void sincronizar()
+    const t = window.setInterval(sincronizar, 3500)
+
+    return () => {
+      cancel = true
+      unsub()
+      window.clearInterval(t)
+    }
+  }, [conversaAberta?.id, mensagensDeConversa, subscribeToMensagens])
 
   // Sincroniza conversaAberta quando conversa é atualizada via realtime
   useEffect(() => {
@@ -275,10 +310,11 @@ export default function WhatsappPage() {
     if (atualizada) setConversaAberta(atualizada)
   }, [conversas]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Scroll automático ao final das mensagens
+  const ultimoIdMensagem = mensagens[mensagens.length - 1]?.id
   useEffect(() => {
+    if (!ultimoIdMensagem) return
     mensagensEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [mensagens])
+  }, [ultimoIdMensagem])
 
   function handleUploadMd(campo: 'system_prompt' | 'base_conhecimento', file: File | null) {
     if (!file || !file.name.endsWith('.md')) {
