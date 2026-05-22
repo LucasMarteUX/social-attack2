@@ -275,8 +275,8 @@ export default function WhatsappPage() {
 
   // Realtime + sincronização periódica (fallback quando a publicação Realtime não recebe INSERT)
   useEffect(() => {
-    const id = conversaAberta?.id
-    if (!id) return
+    if (!conversaAberta) return
+    const id = conversaAberta.id
     let cancel = false
 
     async function sincronizar() {
