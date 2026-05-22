@@ -107,7 +107,7 @@ export default function TodosPage() {
       </div>
 
       {/* Stats rápidas */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <div className="rounded-2xl bg-surface border border-line/[0.08] p-4 shadow-card">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-7 h-7 rounded-lg bg-line/[0.06] flex items-center justify-center">

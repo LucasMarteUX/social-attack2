@@ -225,6 +225,8 @@ O Social Attack oferece um plano gratuito com funcionalidades essenciais. Para a
 
 Acesse o menu de conta no canto superior direito da plataforma, clique em "Planos" e selecione o plano desejado. O pagamento é processado via cartão de crédito.
 
+> **Nota interna para o agente:** Qualquer usuário que pergunte sobre preços, planos, formas de pagamento ou demonstre intenção de contratar deve ser automaticamente identificado como **LEAD** e inserido no pipeline comercial. Consulte a seção "Identificação Automática de Leads" nas regras do agente.
+
 ### Posso cancelar quando quiser?
 
 Sim. O cancelamento pode ser feito a qualquer momento sem multa. O acesso continua até o final do período pago.

@@ -5,7 +5,7 @@ export interface WhatsappConversa {
   id: string
   telefone: string
   nome_contato: string | null
-  status: 'ativo' | 'escalado' | 'encerrado'
+  status: 'ativo' | 'escalado' | 'encerrado' | 'manual'
   label: string | null
   tipo_contato: 'duvida' | 'venda' | null
   etapa_pipeline: 'lead' | 'em_andamento' | 'fechado' | null
@@ -19,7 +19,7 @@ export interface WhatsappConversa {
 export interface WhatsappMensagem {
   id: string
   conversa_id: string
-  role: 'user' | 'agent'
+  role: 'user' | 'agent' | 'humano' | 'divider'
   conteudo: string
   created_at: string
 }
@@ -136,6 +136,53 @@ export function useWhatsapp() {
     setConversas((prev) => prev.map((c) => c.id === conversaId ? { ...c, status } : c))
   }
 
+  async function assumirAtendimento(conversaId: string, telefone: string, atendenteNome: string) {
+    const { error } = await supabase
+      .from('whatsapp_conversas')
+      .update({ status: 'manual' })
+      .eq('id', conversaId)
+    if (error) throw new Error(error.message)
+
+    await supabase.from('whatsapp_mensagens').insert({ conversa_id: conversaId, role: 'divider', conteudo: atendenteNome })
+
+    const msgBemVindo = `Olá! A partir de agora você está falando com *${atendenteNome}*, da equipe Social Attack. Como posso te ajudar? 👋`
+    await supabase.from('whatsapp_mensagens').insert({ conversa_id: conversaId, role: 'humano', conteudo: msgBemVindo })
+    await supabase.from('whatsapp_conversas').update({ ultima_mensagem_at: new Date().toISOString() }).eq('id', conversaId)
+
+    await supabase.functions.invoke('whatsapp-agent-send', {
+      body: { telefone, mensagem: msgBemVindo, delayTyping: 2 },
+    })
+
+    setConversas((prev) => prev.map((c) => c.id === conversaId ? { ...c, status: 'manual' } : c))
+  }
+
+  async function enviarMensagemHumana(conversaId: string, telefone: string, mensagem: string) {
+    await supabase.from('whatsapp_mensagens').insert({ conversa_id: conversaId, role: 'humano', conteudo: mensagem })
+    await supabase.from('whatsapp_conversas').update({ ultima_mensagem_at: new Date().toISOString() }).eq('id', conversaId)
+    await supabase.functions.invoke('whatsapp-agent-send', { body: { telefone, mensagem, delayTyping: 1 } })
+  }
+
+  async function voltarParaAutomatico(conversaId: string, telefone: string) {
+    const msg = 'O assistente virtual *Spark* volta a te atender por aqui. Pode perguntar o que precisar! 👋'
+    await supabase.from('whatsapp_mensagens').insert({ conversa_id: conversaId, role: 'agent', conteudo: msg })
+    const { error } = await supabase.from('whatsapp_conversas').update({
+      status: 'ativo',
+      ultima_mensagem_at: new Date().toISOString(),
+    }).eq('id', conversaId)
+    if (error) throw new Error(error.message)
+    await supabase.functions.invoke('whatsapp-agent-send', { body: { telefone, mensagem: msg, delayTyping: 1 } })
+    setConversas((prev) => prev.map((c) => c.id === conversaId ? { ...c, status: 'ativo' } : c))
+  }
+
+  async function encerrarConversaManual(conversaId: string, telefone: string) {
+    const msgEncerramento =
+      'Atendimento encerrado por aqui. Quando precisar de novo, é só nos mandar *uma nova mensagem* por este WhatsApp — o Spark (IA) volta a te atender do início. Até mais! 😊'
+    await supabase.from('whatsapp_mensagens').insert({ conversa_id: conversaId, role: 'humano', conteudo: msgEncerramento })
+    await supabase.from('whatsapp_conversas').update({ status: 'encerrado', ultima_mensagem_at: new Date().toISOString() }).eq('id', conversaId)
+    await supabase.functions.invoke('whatsapp-agent-send', { body: { telefone, mensagem: msgEncerramento, delayTyping: 1 } })
+    setConversas((prev) => prev.map((c) => c.id === conversaId ? { ...c, status: 'encerrado' } : c))
+  }
+
   async function moverPipeline(conversaId: string, etapa: WhatsappConversa['etapa_pipeline']) {
     const { error } = await supabase
       .from('whatsapp_conversas')
@@ -144,6 +191,18 @@ export function useWhatsapp() {
 
     if (error) throw new Error(error.message)
     setConversas((prev) => prev.map((c) => c.id === conversaId ? { ...c, etapa_pipeline: etapa } : c))
+  }
+
+  async function classificarLead(conversaId: string, etapa: WhatsappConversa['etapa_pipeline']) {
+    const tipo_contato: WhatsappConversa['tipo_contato'] = etapa === null ? null : 'venda'
+    const { error } = await supabase
+      .from('whatsapp_conversas')
+      .update({ tipo_contato, etapa_pipeline: etapa })
+      .eq('id', conversaId)
+    if (error) throw new Error(error.message)
+    setConversas((prev) => prev.map((c) =>
+      c.id === conversaId ? { ...c, tipo_contato, etapa_pipeline: etapa } : c
+    ))
   }
 
   return {
@@ -156,6 +215,11 @@ export function useWhatsapp() {
     atualizarConfig,
     atualizarStatus,
     moverPipeline,
+    classificarLead,
+    assumirAtendimento,
+    enviarMensagemHumana,
+    voltarParaAutomatico,
+    encerrarConversaManual,
     recarregar: carregarConversas,
   }
 }

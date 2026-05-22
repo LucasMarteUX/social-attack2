@@ -31,14 +31,14 @@ export default function CriativosPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <h1 className="text-heading-xl font-bold text-ink">Criativos</h1>
           <p className="text-body-md text-ink-muted mt-1">
             {criativos.length} {criativos.length === 1 ? 'criativo' : 'criativos'} no total
           </p>
         </div>
-        <Button onClick={() => navigate('/criativos/novo')}>
+        <Button onClick={() => navigate('/criativos/novo')} className="w-full shrink-0 sm:w-auto justify-center">
           <Plus size={16} />
           Novo criativo
         </Button>

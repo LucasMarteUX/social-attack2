@@ -134,13 +134,8 @@ Deno.serve(async (req: Request) => {
     })
   }
 
-  // ---------- Conversa ----------
-  const conversasData: Record<string, unknown>[] = await dbSelect('whatsapp_conversas', {
-    'telefone': `eq.${telefone}`,
-    'select': 'id,status,total_mensagens,onboarding_completo,tipo_contato,etapa_pipeline,human_request_count,label',
-  })
-  const conversaExistente = conversasData[0] ?? null
-  let conversa: {
+  // ---------- Conversa (última atividade; nova linha após encerramento) ----------
+  type ConversaRow = {
     id: string
     status: string
     total_mensagens: number
@@ -149,11 +144,21 @@ Deno.serve(async (req: Request) => {
     etapa_pipeline: string | null
     human_request_count: number
     label: string | null
+    nome_contato: string | null
   }
 
-  if (conversaExistente) {
-    conversa = conversaExistente as typeof conversa
-  } else {
+  const conversasData: Record<string, unknown>[] = await dbSelect('whatsapp_conversas', {
+    'telefone': `eq.${telefone}`,
+    'select': 'id,status,total_mensagens,onboarding_completo,tipo_contato,etapa_pipeline,human_request_count,label,nome_contato',
+    'order': 'ultima_mensagem_at.desc.nullslast',
+    'limit': '1',
+  })
+  const ultima = conversasData[0] as ConversaRow | undefined
+
+  let conversa: ConversaRow
+  let novaConversaCriada = false
+
+  if (!ultima) {
     const nova = await dbInsert('whatsapp_conversas', {
       telefone,
       nome_contato: nomeContato,
@@ -161,21 +166,56 @@ Deno.serve(async (req: Request) => {
       total_mensagens: 0,
       onboarding_completo: false,
       human_request_count: 0,
-    })
-    if (!nova || nova.length === 0) {
+    }) as ConversaRow[]
+    if (!nova?.length) {
       console.error('Erro ao criar conversa')
       return new Response('error', { status: 500 })
     }
     conversa = nova[0]
+    novaConversaCriada = true
+  } else if (ultima.status === 'encerrado') {
+    const nova = await dbInsert('whatsapp_conversas', {
+      telefone,
+      nome_contato: nomeContato ?? ultima.nome_contato,
+      status: 'ativo',
+      total_mensagens: 0,
+      onboarding_completo: false,
+      human_request_count: 0,
+    }) as ConversaRow[]
+    if (!nova || nova.length === 0) {
+      console.error('Erro ao reabrir conversa após encerramento')
+      return new Response('error', { status: 500 })
+    }
+    conversa = nova[0]
+    novaConversaCriada = true
+  } else {
+    conversa = ultima
   }
 
+  const nomePatch = novaConversaCriada && nomeContato ? { nome_contato: nomeContato } : {}
+
+  // Salva mensagem do usuário (inclui fila quando já escalado — fica registrada na conversa)
+  await dbInsert('whatsapp_mensagens', { conversa_id: conversa.id, role: 'user', conteudo: texto })
+
   if (conversa.status === 'escalado') {
+    await dbUpdate('whatsapp_conversas', { id: conversa.id }, {
+      ultima_mensagem_at: agora.toISOString(),
+      total_mensagens: conversa.total_mensagens + 1,
+      ...nomePatch,
+    })
     await enviarMensagem(telefone, 'Sua conversa já está com a equipe de suporte. Em breve alguém vai te responder. ⚡')
     return new Response('escalated', { status: 200 })
   }
 
-  // Salva mensagem do usuário
-  await dbInsert('whatsapp_mensagens', { conversa_id: conversa.id, role: 'user', conteudo: texto })
+  // Modo manual — não chama IA
+  if (conversa.status === 'manual') {
+    await dbUpdate('whatsapp_conversas', { id: conversa.id }, {
+      ultima_mensagem_at: agora.toISOString(),
+      total_mensagens: conversa.total_mensagens + 1,
+      ...nomePatch,
+    })
+    return new Response('manual', { status: 200 })
+  }
 
   // ---------- Onboarding ----------
   // Se o onboarding ainda não foi concluído, enviar menu de opções
@@ -206,7 +246,7 @@ Deno.serve(async (req: Request) => {
         etapa_pipeline: etapaPipeline,
         ultima_mensagem_at: agora.toISOString(),
         total_mensagens: conversa.total_mensagens + 2,
-        ...(nomeContato && !conversaExistente ? { nome_contato: nomeContato } : {}),
+        ...nomePatch,
       })
 
       await dbInsert('whatsapp_mensagens', { conversa_id: conversa.id, role: 'agent', conteudo: respostaOnboarding })
@@ -226,7 +266,7 @@ Deno.serve(async (req: Request) => {
     await dbUpdate('whatsapp_conversas', { id: conversa.id }, {
       ultima_mensagem_at: agora.toISOString(),
       total_mensagens: conversa.total_mensagens + 2,
-      ...(nomeContato && !conversaExistente ? { nome_contato: nomeContato } : {}),
+      ...nomePatch,
     })
 
     await dbInsert('whatsapp_mensagens', { conversa_id: conversa.id, role: 'agent', conteudo: menuTexto })
@@ -328,7 +368,7 @@ Deno.serve(async (req: Request) => {
   await dbUpdate('whatsapp_conversas', { id: conversa.id }, {
     ultima_mensagem_at: agora.toISOString(),
     total_mensagens: conversa.total_mensagens + 2,
-    ...(nomeContato && !conversaExistente ? { nome_contato: nomeContato } : {}),
+    ...nomePatch,
   })
 
   await dbInsert('whatsapp_mensagens', { conversa_id: conversa.id, role: 'agent', conteudo: respostaAgente })

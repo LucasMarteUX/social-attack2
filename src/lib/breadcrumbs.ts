@@ -52,5 +52,9 @@ export function breadcrumbsFromPath(pathname: string): BreadcrumbItem[] {
     return [{ label: 'Planejamento', to: '/todos' }, { label: 'To-do' }]
   }
 
+  if (path === '/whatsapp') {
+    return [{ label: 'Social Attack', to: '/' }, { label: 'WhatsApp' }]
+  }
+
   return [{ label: 'Social Attack', to: '/' }, { label: 'Página' }]
 }

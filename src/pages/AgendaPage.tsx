@@ -153,8 +153,8 @@ export default function AgendaPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="inline-flex p-1 rounded-full bg-line/[0.06]">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="inline-flex p-1 rounded-full bg-line/[0.06] w-full sm:w-auto justify-center">
             <button
               onClick={() => setView('calendario')}
               className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-label font-semibold transition-all ${
@@ -175,7 +175,7 @@ export default function AgendaPage() {
             </button>
           </div>
 
-          <Button onClick={() => navigate('/criativos')}>
+          <Button onClick={() => navigate('/criativos')} className="w-full sm:w-auto shrink-0 justify-center">
             <Plus size={16} />
             Agendar post
           </Button>
@@ -183,13 +183,13 @@ export default function AgendaPage() {
       </div>
 
       {/* Layout: conteúdo principal + sidebar */}
-      <div className="flex gap-5 items-start">
+      <div className="flex flex-col lg:flex-row gap-5 lg:items-start">
 
         {/* Coluna principal */}
         <div className="flex-1 min-w-0">
           {view === 'calendario' && (
-            <div className="rounded-3xl bg-surface border border-line/[0.08] p-6 shadow-card">
-              <div className="flex items-center justify-between mb-5">
+            <div className="rounded-3xl bg-surface border border-line/[0.08] p-4 sm:p-6 shadow-card overflow-x-auto">
+              <div className="flex items-center justify-between mb-5 min-w-[280px] sm:min-w-0 gap-3">
                 <h2 className="text-heading-md font-bold text-ink tracking-tight">
                   {MESES[mesAtual.mes]} <span className="text-ink-faint font-medium">{mesAtual.ano}</span>
                 </h2>
@@ -209,6 +209,7 @@ export default function AgendaPage() {
                 </div>
               </div>
 
+              <div className="min-w-[520px] sm:min-w-0">
               <div className="grid grid-cols-7 gap-1 mb-2">
                 {DIAS_SEMANA.map((d) => (
                   <div key={d} className="text-center text-[10px] font-bold uppercase tracking-wider text-ink-faint py-2">
@@ -266,6 +267,7 @@ export default function AgendaPage() {
                     </div>
                   )
                 })}
+              </div>
               </div>
             </div>
           )}
@@ -391,8 +393,8 @@ export default function AgendaPage() {
         </div>
 
         {/* Sidebar — Próximos eventos */}
-        <div className="w-72 flex-shrink-0">
-          <div className="rounded-3xl bg-surface border border-line/[0.08] p-5 shadow-card sticky top-6">
+        <div className="w-full lg:w-72 flex-shrink-0">
+          <div className="rounded-3xl bg-surface border border-line/[0.08] p-5 shadow-card lg:sticky lg:top-6">
             <div className="mb-4">
               <h2 className="text-heading-sm font-bold text-ink">Próximos posts</h2>
               <p className="text-label text-ink-faint mt-0.5">
