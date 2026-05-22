@@ -345,7 +345,7 @@ async function enviarMensagem(telefone: string, mensagem: string) {
         'Content-Type': 'application/json',
         'Client-Token': ZAPI_SECURITY_TOKEN,
       },
-      body: JSON.stringify({ phone: telefone, message: mensagem }),
+      body: JSON.stringify({ phone: telefone, message: mensagem, delayTyping: 3 }),
     })
     if (!res.ok) {
       const errBody = await res.text()
